@@ -38,7 +38,8 @@ megabot/
 │   │   │   └── error_response_dto.py         # ErrorResponse body
 │   │   ├── entities/                         # Base ORM model
 │   │   │   ├── base_entity.py                # DeclarativeBase + naming convention
-│   │   │   └── timestamp_mixin.py            # created_at / updated_at columns
+│   │   │   ├── timestamp_mixin.py            # created_at / updated_at columns
+│   │   │   └── uuid_primary_key_mixin.py     # UUID primary key (id)
 │   │   ├── exceptions/                       # Custom domain errors & HTTP handlers
 │   │   │   ├── app_error.py                  # AppError base class
 │   │   │   ├── not_found_error.py            # NotFoundError (404)
@@ -78,7 +79,8 @@ megabot/
 ```
 
 Each file declares exactly one class, named after the file — `article_create_dto.py` holds
-`ArticleCreateDTO` and nothing else. A module creates only the unit directories it needs: one
+`ArticleCreateDTO` and nothing else. Every entity uses a **UUID primary key** from
+`UuidPrimaryKeyMixin` and timestamps from `TimestampMixin`. A module creates only the unit directories it needs: one
 without persistence has no `entities/`, `repositories/` or `mappers/`.
 
 Each feature is self-contained: adding one means adding a directory under `app/modules/`,
@@ -93,9 +95,9 @@ Controllers never touch the ORM, services never return entities, repositories ne
 | GET    | `/health`                | Health check (incl. DB liveness)   |
 | GET    | `/api/v1/articles`       | List articles (`limit`, `offset`)  |
 | POST   | `/api/v1/articles`       | Create an article                  |
-| GET    | `/api/v1/articles/{id}`  | Get one article                    |
-| PUT    | `/api/v1/articles/{id}`  | Update an article                  |
-| DELETE | `/api/v1/articles/{id}`  | Delete an article                  |
+| GET    | `/api/v1/articles/{uuid}`  | Get one article                    |
+| PUT    | `/api/v1/articles/{uuid}`  | Update an article                  |
+| DELETE | `/api/v1/articles/{uuid}`  | Delete an article                  |
 
 Interactive docs: <http://localhost:8000/docs>
 

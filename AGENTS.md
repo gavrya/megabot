@@ -60,7 +60,8 @@ megabot/
 │   │   │   └── error_response_dto.py         # ErrorResponse body
 │   │   ├── entities/                         # Base ORM model
 │   │   │   ├── base_entity.py                # DeclarativeBase + naming convention
-│   │   │   └── timestamp_mixin.py            # created_at / updated_at columns
+│   │   │   ├── timestamp_mixin.py            # created_at / updated_at columns
+│   │   │   └── uuid_primary_key_mixin.py     # UUID primary key (id)
 │   │   ├── exceptions/                       # Custom domain errors & HTTP handlers
 │   │   │   ├── app_error.py                  # AppError base class
 │   │   │   ├── not_found_error.py            # NotFoundError (404)
@@ -139,7 +140,9 @@ controller -> service -> repository -> entity
   rolls back on error. Reusable query methods go in `shared/repositories/base_repository.py`.
 - **`mappers/<module>_mapper.py`** is the only place converting DTO <-> Entity.
 - **`entities/<module>_entity.py`** inherits `Base` from
-  `app/shared/entities/base_entity.py`; timestamps come from `TimestampMixin`.
+  `app/shared/entities/base_entity.py`, its primary key from `UuidPrimaryKeyMixin` and its
+  timestamps from `TimestampMixin`. Declare it as
+  `class <Module>Entity(UuidPrimaryKeyMixin, TimestampMixin, Base)` and never redeclare `id`.
 - **`dtos/<module>_dto.py`** holds the only types crossing the HTTP boundary. Separate
   Create/Update/Response models; never expose an entity directly.
 - **`dependencies.py`** wires the repository into the service and exports `<Module>ServiceDep`.
@@ -149,6 +152,9 @@ controller -> service -> repository -> entity
 ### General rules
 
 - Everything touching the database is `async`. No sync DB calls in request paths.
+- **Primary keys are UUIDs**, never integers or sequences. The app generates one with
+  `uuid4` on insert; the column also carries a `gen_random_uuid()` server default for rows
+  inserted outside the ORM. Path parameters and service arguments are typed `UUID`.
 - Configuration comes from `app/core/config.py` (pydantic-settings). Never call `os.getenv`;
   add a typed field to `Settings` and document it in `.env.example`.
 - Log via `app.core.logging.get_logger(__name__)` — never `print`. Each request carries an
@@ -234,9 +240,9 @@ uv add <pkg>                  # add a dependency (--dev for dev-only)
 | GET    | `/health`               | Includes DB liveness; never raises |
 | GET    | `/api/v1/articles`      | `limit` (1-100, default 20), `offset` |
 | POST   | `/api/v1/articles`      | 201                               |
-| GET    | `/api/v1/articles/{id}` | 404 as `{"code":"not_found",...}` |
-| PUT    | `/api/v1/articles/{id}` | Full replace                      |
-| DELETE | `/api/v1/articles/{id}` | 204                               |
+| GET    | `/api/v1/articles/{uuid}` | 404 as `{"code":"not_found",...}` |
+| PUT    | `/api/v1/articles/{uuid}` | Full replace                      |
+| DELETE | `/api/v1/articles/{uuid}` | 204                               |
 
 Docs at `/docs`, schema at `/openapi.json`.
 
@@ -253,7 +259,8 @@ Docs at `/docs`, schema at `/openapi.json`.
 Mirror an existing module; create only the unit directories the new module needs.
 
 1. `app/modules/<module>/` with `__init__.py` in the module and in every unit directory
-2. `entities/<module>_entity.py` — ORM model extending `Base` (+ `TimestampMixin`)
+2. `entities/<module>_entity.py` — ORM model:
+   `class <Module>Entity(UuidPrimaryKeyMixin, TimestampMixin, Base)`
 3. Add `from app.modules.<module>.entities import <module>_entity` to `app/modules/__init__.py`
    and list it in `__all__`
 4. `uv run alembic revision --autogenerate -m "create <module>"`, then review the generated file

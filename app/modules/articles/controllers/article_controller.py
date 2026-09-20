@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, status
 
 from app.modules.articles.dependencies import ArticleServiceDep
@@ -16,7 +18,7 @@ async def list_articles(service: ArticleServiceDep, params: PageParamsDep) -> Pa
 
 
 @router.get("/{article_id}", response_model=ArticleResponseDTO)
-async def get_article(article_id: int, service: ArticleServiceDep) -> ArticleResponseDTO:
+async def get_article(article_id: UUID, service: ArticleServiceDep) -> ArticleResponseDTO:
     return await service.get(article_id)
 
 
@@ -29,11 +31,11 @@ async def create_article(
 
 @router.put("/{article_id}", response_model=ArticleResponseDTO)
 async def update_article(
-    article_id: int, payload: ArticleUpdateDTO, service: ArticleServiceDep
+    article_id: UUID, payload: ArticleUpdateDTO, service: ArticleServiceDep
 ) -> ArticleResponseDTO:
     return await service.update(article_id, payload)
 
 
 @router.delete("/{article_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_article(article_id: int, service: ArticleServiceDep) -> None:
+async def delete_article(article_id: UUID, service: ArticleServiceDep) -> None:
     await service.delete(article_id)

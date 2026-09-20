@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,11 +12,13 @@ class BaseRepository[ModelT: Base]:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get(self, entity_id: int) -> ModelT | None:
+    async def get(self, entity_id: UUID) -> ModelT | None:
         return await self.session.get(self.model, entity_id)
 
     async def list(self, limit: int, offset: int) -> list[ModelT]:
-        stmt = select(self.model).order_by(self.model.id.desc()).limit(limit).offset(offset)
+        # UUID ids carry no order, so newest-first comes from created_at when present.
+        order_column = getattr(self.model, "created_at", self.model.id)
+        stmt = select(self.model).order_by(order_column.desc()).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 

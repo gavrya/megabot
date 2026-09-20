@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from app.core.logging import get_logger
 from app.modules.articles.dtos.article_create_dto import ArticleCreateDTO
 from app.modules.articles.dtos.article_response_dto import ArticleResponseDTO
@@ -26,7 +28,7 @@ class ArticleService:
             offset=params.offset,
         )
 
-    async def get(self, article_id: int) -> ArticleResponseDTO:
+    async def get(self, article_id: UUID) -> ArticleResponseDTO:
         return ArticleMapper.to_dto(await self._get_or_fail(article_id))
 
     async def create(self, dto: ArticleCreateDTO) -> ArticleResponseDTO:
@@ -34,18 +36,18 @@ class ArticleService:
         logger.info("article created", extra={"article_id": entity.id})
         return ArticleMapper.to_dto(entity)
 
-    async def update(self, article_id: int, dto: ArticleUpdateDTO) -> ArticleResponseDTO:
+    async def update(self, article_id: UUID, dto: ArticleUpdateDTO) -> ArticleResponseDTO:
         entity = await self._get_or_fail(article_id)
         entity = await self.repository.update(ArticleMapper.apply_update(entity, dto))
         logger.info("article updated", extra={"article_id": entity.id})
         return ArticleMapper.to_dto(entity)
 
-    async def delete(self, article_id: int) -> None:
+    async def delete(self, article_id: UUID) -> None:
         entity = await self._get_or_fail(article_id)
         await self.repository.delete(entity)
         logger.info("article deleted", extra={"article_id": article_id})
 
-    async def _get_or_fail(self, article_id: int) -> ArticleEntity:
+    async def _get_or_fail(self, article_id: UUID) -> ArticleEntity:
         entity = await self.repository.get(article_id)
         if entity is None:
             raise NotFoundError(f"Article {article_id} not found")
