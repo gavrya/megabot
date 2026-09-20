@@ -1,0 +1,19 @@
+.git
+.gitignore
+.venv
+venv
+__pycache__
+*.py[cod]
+.ruff_cache
+.pytest_cache
+.mypy_cache
+.env
+.env.*
+!.env.example
+.vscode
+.antigravity
+.idea
+postgres-data
+*.log
+
+# README.md is intentionally kept: the package metadata references it.

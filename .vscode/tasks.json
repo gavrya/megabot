@@ -1,0 +1,41 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "install",
+      "type": "shell",
+      "command": "uv sync",
+      "problemMatcher": []
+    },
+    {
+      "label": "run",
+      "type": "shell",
+      "command": "uv run uvicorn app.main:app --reload",
+      "problemMatcher": []
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "uv run ruff check .",
+      "problemMatcher": []
+    },
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "uv run ruff format . && uv run ruff check . --fix",
+      "problemMatcher": []
+    },
+    {
+      "label": "migrate",
+      "type": "shell",
+      "command": "uv run alembic upgrade head",
+      "problemMatcher": []
+    },
+    {
+      "label": "seed",
+      "type": "shell",
+      "command": "uv run seed",
+      "problemMatcher": []
+    }
+  ]
+}

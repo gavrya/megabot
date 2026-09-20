@@ -1,0 +1,81 @@
+name: megabot
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: megabot:latest
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME:-megabot}
+      APP_ENV: ${APP_ENV:-production}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      # In-network address of the db service. Deliberately NOT ${POSTGRES_HOST}:
+      # that variable points at localhost for local (non-Docker) development.
+      POSTGRES_HOST: ${DOCKER_POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${DOCKER_POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-megabot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-megabot}
+      POSTGRES_DB: ${POSTGRES_DB:-megabot}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["*"]}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      RUN_SEEDS: ${RUN_SEEDS:-false}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status == 200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - megabot
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-megabot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-megabot}
+      POSTGRES_DB: ${POSTGRES_DB:-megabot}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_EXPOSED_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-megabot} -d ${POSTGRES_DB:-megabot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - megabot
+
+  adminer:
+    image: adminer:5
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: dracula
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - megabot
+
+volumes:
+  postgres-data:
+
+networks:
+  megabot:
+    driver: bridge
