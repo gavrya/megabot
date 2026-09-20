@@ -3,7 +3,7 @@ name = "megabot"
 version = "0.1.0"
 description = "Minimal modern FastAPI service with layered architecture"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -31,8 +31,10 @@ packages = ["app", "seeders"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
-src = ["app", "seeders"]
+target-version = "py314"
+# Project root as the import root, so Ruff sorts `app` and `seeders` as first-party
+# even though there are no __init__.py files.
+src = ["."]
 
 [tool.ruff.lint]
 select = [
@@ -45,12 +47,14 @@ select = [
     "B",    # flake8-bugbear
     "C4",   # flake8-comprehensions
     "SIM",  # flake8-simplify
-    "TCH",  # flake8-type-checking
     "RUF",  # ruff-specific
 ]
 ignore = [
     "B008",  # FastAPI dependency injection relies on calls in defaults
 ]
+# flake8-type-checking ("TC") is deliberately NOT enabled. Under Python 3.14 it moves
+# imports into `TYPE_CHECKING` blocks, which silently breaks FastAPI dependency
+# injection, Pydantic models and SQLAlchemy mappings — they resolve annotations at runtime.
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/versions/*" = ["E501"]
@@ -59,12 +63,3 @@ ignore = [
 quote-style = "double"
 indent-style = "space"
 
-# Pydantic and SQLAlchemy evaluate annotations at runtime, so their imports
-# must never be moved into a `TYPE_CHECKING` block by the TC rules.
-[tool.ruff.lint.flake8-type-checking]
-runtime-evaluated-base-classes = [
-    "pydantic.BaseModel",
-    "pydantic_settings.BaseSettings",
-    "sqlalchemy.orm.DeclarativeBase",
-    "app.shared.entities.base_entity.Base",
-]

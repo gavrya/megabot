@@ -8,7 +8,7 @@ duplicate rules into them.
 
 | Concern         | Choice                                        |
 | --------------- | --------------------------------------------- |
-| Language        | Python 3.12 (pinned in `.python-version`)     |
+| Language        | Python 3.14 (pinned in `.python-version`)     |
 | Package manager | uv (`pyproject.toml` + `uv.lock`)             |
 | Web framework   | FastAPI (ASGI, served by uvicorn)             |
 | Validation      | Pydantic v2 + pydantic-settings               |
@@ -16,7 +16,7 @@ duplicate rules into them.
 | ORM             | SQLAlchemy 2.0, async, `asyncpg` driver       |
 | Migrations      | Alembic (async env)                           |
 | Lint + format   | Ruff (line length 100, target py312)          |
-| Container       | Docker, `python:3.12-slim-bookworm` runtime   |
+| Container       | Docker, `python:3.14-slim-bookworm` runtime   |
 | Tests           | None — this project intentionally has no tests |
 
 ## Directory structure
@@ -34,7 +34,7 @@ megabot/
 │   │   └── logging.py                        # Console/JSON formatters, request-id contextvar
 │   │
 │   ├── modules/                              # Domain / feature modules
-│   │   ├── __init__.py                       # Registry: imports every module's entities for Alembic
+│   │   ├── registry.py                       # Registry: imports every module's entities for Alembic
 │   │   └── <module>/                         # One directory per feature (vertical slice)
 │   │       ├── controllers/                  # HTTP endpoints / handlers
 │   │       │   └── <module>_controller.py    # Routes: read input, call a service, return a DTO
@@ -116,7 +116,8 @@ Rules for placement:
   module.
 - Modules must not import from each other's internals — go through the other module's service,
   imported from `app/modules/<other>/services/<other>_service.py`.
-- Every module directory and every unit directory needs an `__init__.py`.
+- **No `__init__.py` anywhere.** Packages are implicit (PEP 420 namespace packages); never
+  add one. The entity registry lives in `app/modules/registry.py`, not in a package init.
 
 ## Rules & Architecture
 
@@ -162,7 +163,7 @@ controller -> service -> repository -> entity
 - Errors are returned by the handlers in `app/shared/exceptions/exception_handlers.py` as
   `{"code", "message", "details?"}`. Add new failure modes as `AppError` subclasses.
 - Any schema change requires an Alembic migration; never edit an applied migration.
-- New module? Add one import line to `app/modules/__init__.py` (else Alembic autogenerate
+- New module? Add one import line to `app/modules/registry.py` (else Alembic autogenerate
   will emit a DROP for its table) and register its `router.py` in `app/router.py`.
 - New dependency? `uv add <pkg>` (never edit `pyproject.toml` by hand) and commit `uv.lock`.
 - Run `uv run ruff format . && uv run ruff check . --fix` before finishing a change.
@@ -175,8 +176,11 @@ controller -> service -> repository -> entity
   passing it through would make the container dial its own loopback.
 - `README.md` must stay out of `.dockerignore` — hatchling reads it for package metadata and
   the image build fails without it.
-- `pyproject.toml` sets `runtime-evaluated-base-classes` for Ruff's TC rules so Pydantic and
-  SQLAlchemy imports are never moved into a `TYPE_CHECKING` block, which breaks them at runtime.
+- Ruff's `TC` (flake8-type-checking) rules are deliberately **not** enabled. On Python 3.14 they
+  move imports into `TYPE_CHECKING` blocks; the app still imports and starts, but FastAPI can no
+  longer resolve `<Module>ServiceDep` and every endpoint answers 422 `Field required`.
+- `pyproject.toml` sets `src = ["."]` so Ruff treats the project root as the import root.
+  Pointing `src` at the packages themselves makes isort sort `app` and `seeders` as third-party.
 - The runtime image is Debian slim, not Alpine, so dependencies without musl wheels still
   install as prebuilt wheels.
 - `PGADMIN_EMAIL` must use a real TLD. pgAdmin rejects reserved domains such as `.local`
@@ -258,10 +262,10 @@ Docs at `/docs`, schema at `/openapi.json`.
 
 Mirror an existing module; create only the unit directories the new module needs.
 
-1. `app/modules/<module>/` with `__init__.py` in the module and in every unit directory
+1. `app/modules/<module>/` with its unit directories (no `__init__.py` files)
 2. `entities/<module>_entity.py` — ORM model:
    `class <Module>Entity(UuidPrimaryKeyMixin, TimestampMixin, Base)`
-3. Add `from app.modules.<module>.entities import <module>_entity` to `app/modules/__init__.py`
+3. Add `from app.modules.<module>.entities import <module>_entity` to `app/modules/registry.py`
    and list it in `__all__`
 4. `uv run alembic revision --autogenerate -m "create <module>"`, then review the generated file
 5. `dtos/` — one file per DTO: `<module>_create_dto.py`, `<module>_update_dto.py`,
