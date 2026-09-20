@@ -1,7 +1,8 @@
 from sqlalchemy import String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.entities.base_entity import Base, TimestampMixin
+from app.shared.entities.base_entity import Base
+from app.shared.entities.timestamp_mixin import TimestampMixin
 
 
 class ArticleEntity(Base, TimestampMixin):

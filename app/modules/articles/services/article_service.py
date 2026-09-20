@@ -1,14 +1,13 @@
 from app.core.logging import get_logger
-from app.modules.articles.dtos.article_dto import (
-    ArticleCreateDTO,
-    ArticleResponseDTO,
-    ArticleUpdateDTO,
-)
+from app.modules.articles.dtos.article_create_dto import ArticleCreateDTO
+from app.modules.articles.dtos.article_response_dto import ArticleResponseDTO
+from app.modules.articles.dtos.article_update_dto import ArticleUpdateDTO
 from app.modules.articles.entities.article_entity import ArticleEntity
 from app.modules.articles.mappers.article_mapper import ArticleMapper
 from app.modules.articles.repositories.article_repository import ArticleRepository
-from app.shared.dtos.base_dto import Page, PageParams
-from app.shared.exceptions.base_exceptions import NotFoundError
+from app.shared.dtos.page_dto import Page
+from app.shared.dtos.page_params_dto import PageParams
+from app.shared.exceptions.not_found_error import NotFoundError
 
 logger = get_logger(__name__)
 

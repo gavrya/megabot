@@ -4,7 +4,7 @@ from sqlalchemy import text
 from app.core.config import settings
 from app.core.database import engine
 from app.core.logging import get_logger
-from app.modules.health.dtos.health_dto import HealthResponseDTO
+from app.modules.health.dtos.health_response_dto import HealthResponseDTO
 
 router = APIRouter()
 logger = get_logger(__name__)

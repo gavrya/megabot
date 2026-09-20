@@ -1,8 +1,6 @@
-from app.modules.articles.dtos.article_dto import (
-    ArticleCreateDTO,
-    ArticleResponseDTO,
-    ArticleUpdateDTO,
-)
+from app.modules.articles.dtos.article_create_dto import ArticleCreateDTO
+from app.modules.articles.dtos.article_response_dto import ArticleResponseDTO
+from app.modules.articles.dtos.article_update_dto import ArticleUpdateDTO
 from app.modules.articles.entities.article_entity import ArticleEntity
 
 

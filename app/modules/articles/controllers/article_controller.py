@@ -1,13 +1,11 @@
 from fastapi import APIRouter, status
 
 from app.modules.articles.dependencies import ArticleServiceDep
-from app.modules.articles.dtos.article_dto import (
-    ArticleCreateDTO,
-    ArticleResponseDTO,
-    ArticleUpdateDTO,
-)
+from app.modules.articles.dtos.article_create_dto import ArticleCreateDTO
+from app.modules.articles.dtos.article_response_dto import ArticleResponseDTO
+from app.modules.articles.dtos.article_update_dto import ArticleUpdateDTO
 from app.shared.dependencies import PageParamsDep
-from app.shared.dtos.base_dto import Page
+from app.shared.dtos.page_dto import Page
 
 router = APIRouter()
 

@@ -27,79 +27,88 @@ stack; cross-cutting code lives in `core/` and `shared/`. Files carry their unit
 
 ```
 megabot/
-├── app/                                    # Application package
-│   ├── core/                               # Infrastructure configuration
-│   │   ├── config.py                       # Typed settings loaded from the environment
-│   │   ├── database.py                     # Async engine, session factory, request-scoped session
-│   │   └── logging.py                      # Console/JSON formatters, request-id contextvar
+├── app/                                      # Application package
+│   ├── core/                                 # Infrastructure configuration
+│   │   ├── config.py                         # Typed settings loaded from the environment
+│   │   ├── database.py                       # Async engine, session factory, request-scoped session
+│   │   └── logging.py                        # Console/JSON formatters, request-id contextvar
 │   │
-│   ├── modules/                            # Domain / feature modules
-│   │   ├── __init__.py                     # Registry: imports every module's entities for Alembic
-│   │   └── <module>/                       # One directory per feature (vertical slice)
-│   │       ├── controllers/                # HTTP endpoints / handlers
-│   │       │   └── <module>_controller.py  # Routes: read input, call a service, return a DTO
-│   │       ├── dtos/                       # Module-specific Pydantic v2 schemas
-│   │       │   └── <module>_dto.py         # Create / Update / Response models
-│   │       ├── entities/                   # SQLAlchemy ORM models
-│   │       │   └── <module>_entity.py      # Table definition; extends Base
-│   │       ├── mappers/                    # DTO <-> Entity converters
-│   │       │   └── <module>_mapper.py      # to_entity / apply_update / to_dto
-│   │       ├── repositories/               # Database queries
-│   │       │   └── <module>_repository.py  # Queries; extends BaseRepository
-│   │       ├── services/                   # Business logic
-│   │       │   └── <module>_service.py     # Orchestrates repository + mapper; raises AppError
-│   │       ├── dependencies.py             # Module DI; exports <Module>ServiceDep
-│   │       └── router.py                   # Module router export; owns the URL prefix and tags
+│   ├── modules/                              # Domain / feature modules
+│   │   ├── __init__.py                       # Registry: imports every module's entities for Alembic
+│   │   └── <module>/                         # One directory per feature (vertical slice)
+│   │       ├── controllers/                  # HTTP endpoints / handlers
+│   │       │   └── <module>_controller.py    # Routes: read input, call a service, return a DTO
+│   │       ├── dtos/                         # Module-specific Pydantic v2 schemas
+│   │       │   ├── <module>_create_dto.py    # One DTO per file: create payload
+│   │       │   ├── <module>_update_dto.py    # Update payload
+│   │       │   └── <module>_response_dto.py  # Response shape
+│   │       ├── entities/                     # SQLAlchemy ORM models
+│   │       │   └── <module>_entity.py        # Table definition; extends Base
+│   │       ├── mappers/                      # DTO <-> Entity converters
+│   │       │   └── <module>_mapper.py        # to_entity / apply_update / to_dto
+│   │       ├── repositories/                 # Database queries
+│   │       │   └── <module>_repository.py    # Queries; extends BaseRepository
+│   │       ├── services/                     # Business logic
+│   │       │   └── <module>_service.py       # Orchestrates repository + mapper; raises AppError
+│   │       ├── dependencies.py               # Module DI; exports <Module>ServiceDep
+│   │       └── router.py                     # Module router export; owns the URL prefix and tags
 │   │
-│   ├── shared/                             # Cross-cutting concerns & base classes
-│   │   ├── dtos/                           # Base DTOs & paginated responses
-│   │   │   └── base_dto.py                 # PageParams, Page[T], ErrorResponse
-│   │   ├── entities/                       # Base ORM model
-│   │   │   └── base_entity.py              # DeclarativeBase, TimestampMixin, naming convention
-│   │   ├── exceptions/                     # Custom domain errors & HTTP handlers
-│   │   │   ├── base_exceptions.py          # AppError, NotFoundError, ConflictError
-│   │   │   └── exception_handlers.py       # Maps raised errors to JSON error responses
-│   │   ├── middlewares/                    # ASGI middleware
-│   │   │   └── logging_middleware.py       # Request id, timing and access logging
-│   │   ├── repositories/                   # Generic data access
-│   │   │   └── base_repository.py          # Generic CRUD: get/list/count/add/update/delete
-│   │   └── dependencies.py                 # Shared DI: SessionDep, PageParamsDep
+│   ├── shared/                               # Cross-cutting concerns & base classes
+│   │   ├── dtos/                             # Base DTOs & paginated responses
+│   │   │   ├── page_params_dto.py            # PageParams (limit/offset query params)
+│   │   │   ├── page_dto.py                   # Page[T] paginated envelope
+│   │   │   └── error_response_dto.py         # ErrorResponse body
+│   │   ├── entities/                         # Base ORM model
+│   │   │   ├── base_entity.py                # DeclarativeBase + naming convention
+│   │   │   └── timestamp_mixin.py            # created_at / updated_at columns
+│   │   ├── exceptions/                       # Custom domain errors & HTTP handlers
+│   │   │   ├── app_error.py                  # AppError base class
+│   │   │   ├── not_found_error.py            # NotFoundError (404)
+│   │   │   ├── conflict_error.py             # ConflictError (409)
+│   │   │   └── exception_handlers.py         # Maps raised errors to JSON error responses
+│   │   ├── middlewares/                      # ASGI middleware
+│   │   │   └── logging_middleware.py         # Request id, timing and access logging
+│   │   ├── repositories/                     # Generic data access
+│   │   │   └── base_repository.py            # Generic CRUD: get/list/count/add/update/delete
+│   │   └── dependencies.py                   # Shared DI: SessionDep, PageParamsDep
 │   │
-│   ├── router.py                           # Aggregates every module router
-│   └── main.py                             # App factory: middleware, handlers, lifespan
+│   ├── router.py                             # Aggregates every module router
+│   └── main.py                               # App factory: middleware, handlers, lifespan
 │
-├── alembic/                                # Migration environment
-│   ├── versions/                           # Migration files, one per schema change
-│   ├── env.py                              # Async migration runner; loads Base.metadata
-│   └── script.py.mako                      # Template used for new migration files
+├── alembic/                                  # Migration environment
+│   ├── versions/                             # Migration files, one per schema change
+│   ├── env.py                                # Async migration runner; loads Base.metadata
+│   └── script.py.mako                        # Template used for new migration files
 │
-├── docker/                                 # Config files mounted into containers
-│   └── pgadmin/servers.json                # Pre-registered db connection for pgAdmin
+├── seeders/                                  # Database seeding
+│   ├── runner.py                             # Discovers and runs seeders in filename order
+│   └── seed_<NNN>_<name>.py                  # One seeder; exposes async run(session)
 │
-├── seeders/                                # Database seeding
-│   ├── runner.py                           # Discovers and runs seeders in filename order
-│   └── seed_<NNN>_<name>.py                # One seeder; exposes async run(session)
-│
-├── .vscode/                                # VS Code settings, extensions, launch configs, tasks
-├── .antigravity/                           # Antigravity settings, extensions, rules
-├── AGENTS.md                               # Master instructions for AI agents (source of truth)
-├── CLAUDE.md                               # Claude Code wrapper -> AGENTS.md
-├── ANTIGRAVITY.md                          # Antigravity wrapper -> AGENTS.md
-├── Dockerfile                              # Multi-stage build: uv builder -> slim runtime
-├── docker-compose.yml                      # app + postgres + pgadmin (env-driven)
-├── docker-entrypoint.sh                    # Runs migrations/seeds on start, then the CMD
-├── alembic.ini                             # Alembic config: script location, file naming
-├── Makefile                                # Shortcuts for every command in this file
-├── pyproject.toml                          # Dependencies + Ruff configuration
-├── .env.example                            # Documented template for .env
-└── .python-version                         # Python version pinned for uv
+├── .vscode/                                  # VS Code settings, extensions, launch configs, tasks
+├── .antigravity/                             # Antigravity settings, extensions, rules
+├── AGENTS.md                                 # Master instructions for AI agents (source of truth)
+├── CLAUDE.md                                 # Claude Code wrapper -> AGENTS.md
+├── ANTIGRAVITY.md                            # Antigravity wrapper -> AGENTS.md
+├── Dockerfile                                # Multi-stage build: uv builder -> slim runtime
+├── docker-compose.yml                        # app + postgres + adminer, driven by env vars
+├── docker-entrypoint.sh                      # Runs migrations/seeds on start, then the CMD
+├── alembic.ini                               # Alembic config: script location, file naming
+├── Makefile                                  # Shortcuts for every command in this file
+├── pyproject.toml                            # Dependencies + Ruff configuration
+├── .env.example                              # Documented template for .env
+└── .python-version                           # Python version pinned for uv
 ```
 
 Rules for placement:
 
-- Every unit directory holds files named `<subject>_<unit>.py`, where `<subject>` is usually
-  the module name. A unit directory may hold several files (a module with two controllers
-  names them after their subjects) — add a file rather than widening an existing one.
+- **One definition per file.** A file in a unit directory declares exactly one class (or one
+  router), named after the file: `article_create_dto.py` holds `ArticleCreateDTO` and nothing
+  else. Never group related classes into a single module.
+- Files are named `<subject>_<unit>.py`, where `<subject>` is the class name in snake_case
+  minus the unit suffix. Adding a variant means adding a file, never widening an existing one.
+- A controller file is one controller: its route handlers for that resource live together,
+  since they share the router. Private helpers (leading underscore) stay beside the single
+  public definition they serve.
 - A module creates only the unit directories it needs: one without persistence has no
   `entities/`, `repositories/` or `mappers/`.
 - Code belongs in `shared/` only when a second module would use it; otherwise keep it in the
@@ -248,7 +257,8 @@ Mirror an existing module; create only the unit directories the new module needs
 3. Add `from app.modules.<module>.entities import <module>_entity` to `app/modules/__init__.py`
    and list it in `__all__`
 4. `uv run alembic revision --autogenerate -m "create <module>"`, then review the generated file
-5. `dtos/<module>_dto.py` — Create / Update / Response models
+5. `dtos/` — one file per DTO: `<module>_create_dto.py`, `<module>_update_dto.py`,
+   `<module>_response_dto.py`
 6. `mappers/<module>_mapper.py` — DTO <-> Entity
 7. `repositories/<module>_repository.py` — subclass `BaseRepository[<Module>Entity]`
 8. `services/<module>_service.py` — business logic raising `AppError` subclasses

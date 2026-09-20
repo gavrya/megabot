@@ -4,8 +4,8 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import get_logger
-from app.shared.dtos.base_dto import ErrorResponse
-from app.shared.exceptions.base_exceptions import AppError
+from app.shared.dtos.error_response_dto import ErrorResponse
+from app.shared.exceptions.app_error import AppError
 
 logger = get_logger(__name__)
 
