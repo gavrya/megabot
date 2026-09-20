@@ -73,6 +73,9 @@ megabot/
 │   ├── env.py                              # Async migration runner; loads Base.metadata
 │   └── script.py.mako                      # Template used for new migration files
 │
+├── docker/                                 # Config files mounted into containers
+│   └── pgadmin/servers.json                # Pre-registered db connection for pgAdmin
+│
 ├── seeders/                                # Database seeding
 │   ├── runner.py                           # Discovers and runs seeders in filename order
 │   └── seed_<NNN>_<name>.py                # One seeder; exposes async run(session)
@@ -83,7 +86,7 @@ megabot/
 ├── CLAUDE.md                               # Claude Code wrapper -> AGENTS.md
 ├── ANTIGRAVITY.md                          # Antigravity wrapper -> AGENTS.md
 ├── Dockerfile                              # Multi-stage build: uv builder -> slim runtime
-├── docker-compose.yml                      # app + postgres + adminer, driven by env vars
+├── docker-compose.yml                      # app + postgres + pgadmin (env-driven)
 ├── docker-entrypoint.sh                    # Runs migrations/seeds on start, then the CMD
 ├── alembic.ini                             # Alembic config: script location, file naming
 ├── Makefile                                # Shortcuts for every command in this file
@@ -161,6 +164,9 @@ controller -> service -> repository -> entity
   SQLAlchemy imports are never moved into a `TYPE_CHECKING` block, which breaks them at runtime.
 - The runtime image is Debian slim, not Alpine, so dependencies without musl wheels still
   install as prebuilt wheels.
+- `PGADMIN_EMAIL` must use a real TLD. pgAdmin rejects reserved domains such as `.local`
+  and crash-loops on startup.
+- pgAdmin reaches the database at host `postgres`, not `localhost` (which is its own container).
 
 ## CLI commands
 
@@ -177,7 +183,7 @@ uv sync                 # create .venv, install deps (make install)
 
 ```bash
 uv run uvicorn app.main:app --reload     # local API on :8000 (make run)
-docker compose up -d postgres adminer    # database + Adminer only
+docker compose up -d postgres pgadmin    # database + pgAdmin only
 docker compose up -d --build             # full stack in Docker (make up)
 docker compose down                      # stop (make down); add -v to wipe the DB volume
 ```

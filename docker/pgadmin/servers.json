@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "megabot",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "megabot",
+      "Username": "megabot",
+      "SSLMode": "prefer",
+      "Comment": "Pre-registered so the host is 'postgres' (the compose service), never 'localhost'."
+    }
+  }
+}

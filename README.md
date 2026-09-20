@@ -51,6 +51,9 @@ megabot/
 │   ├── env.py                              # Async migration runner; loads Base.metadata
 │   └── script.py.mako                      # Template used for new migration files
 │
+├── docker/                                 # Config files mounted into containers
+│   └── pgadmin/servers.json                # Pre-registered db connection for pgAdmin
+│
 ├── seeders/                                # Database seeding
 │   ├── runner.py                           # Discovers and runs seeders in filename order
 │   └── seed_<NNN>_<name>.py                # One seeder; exposes async run(session)
@@ -61,7 +64,7 @@ megabot/
 ├── CLAUDE.md                               # Claude Code wrapper -> AGENTS.md
 ├── ANTIGRAVITY.md                          # Antigravity wrapper -> AGENTS.md
 ├── Dockerfile                              # Multi-stage build: uv builder -> slim runtime
-├── docker-compose.yml                      # app + postgres + adminer, driven by env vars
+├── docker-compose.yml                      # app + postgres + pgadmin (env-driven)
 ├── docker-entrypoint.sh                    # Runs migrations/seeds on start, then the CMD
 ├── alembic.ini                             # Alembic config: script location, file naming
 ├── Makefile                                # Shortcuts for the commands below
@@ -125,7 +128,7 @@ uv python install 3.12
 
 ### Other tools
 
-- **Docker** (with Compose v2) — for PostgreSQL and Adminer: <https://docs.docker.com/get-docker/>
+- **Docker** (with Compose v2) — for PostgreSQL and pgAdmin: <https://docs.docker.com/get-docker/>
 - **make** (optional) — shortcuts for every command below; preinstalled on macOS/Linux.
 - **Ruff** is installed as a dev dependency, no separate install needed.
 
@@ -150,10 +153,10 @@ uv add --dev <package>    # dev-only dependency
 cp .env.example .env
 ```
 
-Start PostgreSQL and Adminer (Adminer UI: <http://localhost:8080>):
+Start PostgreSQL and pgAdmin (<http://localhost:5050>):
 
 ```bash
-docker compose up -d postgres adminer
+docker compose up -d postgres pgadmin
 ```
 
 Apply migrations, then run the API:
@@ -172,8 +175,30 @@ docker compose up -d --build
 ```
 
 The app container applies migrations on start (`RUN_MIGRATIONS=true`) and can also run the
-seeders (`RUN_SEEDS=true`). Services: API on <http://localhost:8000>, Adminer on
-<http://localhost:8080> (server `postgres`, credentials from `.env`).
+seeders (`RUN_SEEDS=true`).
+
+| Service  | URL                                              | Credentials                            |
+| -------- | ------------------------------------------------ | -------------------------------------- |
+| API      | <http://localhost:8000> (docs at `/docs`)        | —                                      |
+| pgAdmin  | <http://localhost:5050>                          | `PGADMIN_EMAIL` / `PGADMIN_PASSWORD`   |
+
+### Connecting a database UI
+
+pgAdmin runs **inside a container**, so the database host is the compose service name
+`postgres` — never `localhost`, which refers to pgAdmin's own container and fails with
+`connection refused`.
+
+| Field    | Value                              |
+| -------- | ---------------------------------- |
+| System   | PostgreSQL                         |
+| Server   | `postgres`                         |
+| Username | `POSTGRES_USER` (default `megabot`)   |
+| Password | `POSTGRES_PASSWORD` (default `megabot`) |
+| Database | `POSTGRES_DB` (default `megabot`)     |
+
+pgAdmin ships a pre-registered `megabot` server from `docker/pgadmin/servers.json`, so in
+practice you only enter the database password when expanding it. From your own machine
+(psql, TablePlus, DataGrip) use `localhost:5432` instead — the port is published.
 
 ### Lint and format
 
