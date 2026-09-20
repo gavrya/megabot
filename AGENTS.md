@@ -34,7 +34,6 @@ megabot/
 │   │   └── logging.py                        # Console/JSON formatters, request-id contextvar
 │   │
 │   ├── modules/                              # Domain / feature modules
-│   │   ├── registry.py                       # Registry: imports every module's entities for Alembic
 │   │   └── <module>/                         # One directory per feature (vertical slice)
 │   │       ├── controllers/                  # HTTP endpoints / handlers
 │   │       │   └── <module>_controller.py    # Routes: read input, call a service, return a DTO
@@ -73,6 +72,7 @@ megabot/
 │   │   │   └── base_repository.py            # Generic CRUD: get/list/count/add/update/delete
 │   │   └── dependencies.py                   # Shared DI: SessionDep, PageParamsDep
 │   │
+│   ├── registry.py                           # Entity autoloader: imports every entities/*_entity.py
 │   ├── router.py                             # Aggregates every module router
 │   └── main.py                               # App factory: middleware, handlers, lifespan
 │
@@ -117,7 +117,7 @@ Rules for placement:
 - Modules must not import from each other's internals — go through the other module's service,
   imported from `app/modules/<other>/services/<other>_service.py`.
 - **No `__init__.py` anywhere.** Packages are implicit (PEP 420 namespace packages); never
-  add one. The entity registry lives in `app/modules/registry.py`, not in a package init.
+  add one. `app/registry.py` autoloads entities by convention and needs no editing.
 
 ## Rules & Architecture
 
@@ -163,8 +163,10 @@ controller -> service -> repository -> entity
 - Errors are returned by the handlers in `app/shared/exceptions/exception_handlers.py` as
   `{"code", "message", "details?"}`. Add new failure modes as `AppError` subclasses.
 - Any schema change requires an Alembic migration; never edit an applied migration.
-- New module? Add one import line to `app/modules/registry.py` (else Alembic autogenerate
-  will emit a DROP for its table) and register its `router.py` in `app/router.py`.
+- New module? Register its `router.py` in `app/router.py`. Entities need no registration:
+  `app/registry.py` imports every `**/entities/*_entity.py` under `app/` before autogenerate
+  runs — module and shared entities alike. The `entities/` directory plus the `_entity.py`
+  suffix is what makes a table visible to Alembic.
 - New dependency? `uv add <pkg>` (never edit `pyproject.toml` by hand) and commit `uv.lock`.
 - Run `uv run ruff format . && uv run ruff check . --fix` before finishing a change.
 - Do **not** write unit tests; verify changes by running the app against the local stack.
@@ -264,24 +266,24 @@ Mirror an existing module; create only the unit directories the new module needs
 
 1. `app/modules/<module>/` with its unit directories (no `__init__.py` files)
 2. `entities/<module>_entity.py` — ORM model:
-   `class <Module>Entity(UuidPrimaryKeyMixin, TimestampMixin, Base)`
-3. Add `from app.modules.<module>.entities import <module>_entity` to `app/modules/registry.py`
-   and list it in `__all__`
-4. `uv run alembic revision --autogenerate -m "create <module>"`, then review the generated file
-5. `dtos/` — one file per DTO: `<module>_create_dto.py`, `<module>_update_dto.py`,
+   `class <Module>Entity(UuidPrimaryKeyMixin, TimestampMixin, Base)`.
+   It is autoloaded, provided it sits in an `entities/` directory and ends in `_entity.py`
+3. `uv run alembic revision --autogenerate -m "create <module>"`, then review the generated file
+4. `dtos/` — one file per DTO: `<module>_create_dto.py`, `<module>_update_dto.py`,
    `<module>_response_dto.py`
-6. `mappers/<module>_mapper.py` — DTO <-> Entity
-7. `repositories/<module>_repository.py` — subclass `BaseRepository[<Module>Entity]`
-8. `services/<module>_service.py` — business logic raising `AppError` subclasses
-9. `dependencies.py` — `<Module>ServiceDep`
-10. `controllers/<module>_controller.py` — `APIRouter()` with relative paths
-11. `router.py` — `router.include_router(<module>_controller.router, prefix="/<module>s", tags=[...])`
-12. Register the module router in `app/router.py`
-13. Optional `seeders/seed_NNN_<name>.py` (idempotent)
-14. `uv run ruff format . && uv run ruff check . --fix`, then run the app and hit the endpoints
+5. `mappers/<module>_mapper.py` — DTO <-> Entity
+6. `repositories/<module>_repository.py` — subclass `BaseRepository[<Module>Entity]`
+7. `services/<module>_service.py` — business logic raising `AppError` subclasses
+8. `dependencies.py` — `<Module>ServiceDep`
+9. `controllers/<module>_controller.py` — `APIRouter()` with relative paths
+10. `router.py` — `router.include_router(<module>_controller.router, prefix="/<module>s", tags=[...])`
+11. Register the module router in `app/router.py`
+12. Optional `seeders/seed_NNN_<module>.py` (idempotent)
+13. `uv run ruff format . && uv run ruff check . --fix`, then run the app and hit the endpoints
 
-Steps 3 and 12 are the ones that get forgotten: without 3 Alembic will try to drop the new
-table, without 12 the endpoints are simply absent. Note also that a controller route path of
+Step 11 is the one that gets forgotten — without it the endpoints are simply absent. Entity
+registration is automatic, but only for files named `*_entity.py` inside an `entities/`
+directory anywhere under `app/`. Note also that a controller route path of
 `""` is only legal because `router.py` supplies a non-empty prefix — FastAPI rejects an empty
 path and empty prefix together.
 

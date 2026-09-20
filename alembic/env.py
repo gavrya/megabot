@@ -5,9 +5,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-import app.modules.registry  # noqa: F401 - registers every module's entity on Base.metadata
 from alembic import context
 from app.core.config import settings
+from app.registry import import_entity_modules
 from app.shared.entities.base_entity import Base
 
 config = context.config
@@ -15,6 +15,9 @@ config.set_main_option("sqlalchemy.url", str(settings.database_url))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Import every entity module so Base.metadata is complete before autogenerate runs.
+import_entity_modules()
 
 target_metadata = Base.metadata
 
