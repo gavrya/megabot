@@ -5,7 +5,7 @@ from fastapi import APIRouter, status, Depends
 from app.modules.quotes.dtos.quote_dto import CreateQuoteDTO, UpdateQuoteDTO, QuoteResponseDTO
 from app.modules.quotes.repositories.quote_repository import QuoteRepository
 from app.modules.quotes.services.quote_service import QuoteService
-from app.shared.dependencies import SessionDep
+from app.shared.dependencies import SessionDep, PageParamsDep
 from app.shared.dtos.page_dto import Page
 from app.shared.dtos.page_params_dto import PageParams
 
@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 @router.get("", response_model=Page[QuoteResponseDTO])
-async def list_quotes(params: PageParams, service: QuoteServiceDep) -> Page[QuoteResponseDTO]:
+async def list_quotes(params: PageParamsDep, service: QuoteServiceDep) -> Page[QuoteResponseDTO]:
     return await service.list(params)
 
 
