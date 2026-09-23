@@ -1,7 +1,9 @@
 from uuid import UUID
 
 from app.core.logging import get_logger
-from app.modules.quotes.dtos.quote_dto import CreateQuoteDTO, UpdateQuoteDTO, QuoteResponseDTO
+from app.modules.quotes.dtos.quote_create_dto import CreateQuoteDTO
+from app.modules.quotes.dtos.quote_update_dto import UpdateQuoteDTO
+from app.modules.quotes.dtos.quote_response_dto import QuoteResponseDTO
 from app.modules.quotes.entities.quote_entity import QuoteEntity
 from app.modules.quotes.mappers.quote_mapper import QuoteMapper
 from app.modules.quotes.repositories.quote_repository import QuoteRepository
