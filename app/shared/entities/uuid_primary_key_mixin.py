@@ -12,4 +12,5 @@ class UuidPrimaryKeyMixin:
         primary_key=True,
         default=uuid.uuid4,
         server_default=func.gen_random_uuid(),
+        sort_order=-100,
     )
