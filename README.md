@@ -91,14 +91,14 @@ Controllers never touch the ORM, services never return entities, repositories ne
 
 ## Endpoints
 
-| Method | Path                     | Description                       |
-| ------ | ------------------------ | --------------------------------- |
-| GET    | `/health`                | Health check (incl. DB liveness)   |
-| GET    | `/api/v1/articles`       | List articles (`limit`, `offset`)  |
-| POST   | `/api/v1/articles`       | Create an article                  |
-| GET    | `/api/v1/articles/{uuid}`  | Get one article                    |
-| PUT    | `/api/v1/articles/{uuid}`  | Update an article                  |
-| DELETE | `/api/v1/articles/{uuid}`  | Delete an article                  |
+| Method | Path                      | Description                       |
+| ------ | ------------------------- | --------------------------------- |
+| GET    | `/health`                 | Health check (incl. DB liveness)  |
+| GET    | `/api/v1/articles`        | List articles (`limit`, `offset`) |
+| POST   | `/api/v1/articles`        | Create an article                 |
+| GET    | `/api/v1/articles/{uuid}` | Get one article                   |
+| PUT    | `/api/v1/articles/{uuid}` | Update an article                 |
+| DELETE | `/api/v1/articles/{uuid}` | Delete an article                 |
 
 Interactive docs: <http://localhost:8000/docs>
 
@@ -161,10 +161,10 @@ uv add --dev <package>    # dev-only dependency
 cp .env.example .env
 ```
 
-Start PostgreSQL and pgAdmin (<http://localhost:5050>):
+Start PostgreSQL, pgAdmin (<http://localhost:5050>) and signal-api (<http://localhost:8080>):
 
 ```bash
-docker compose up -d postgres pgadmin
+docker compose up -d postgres pgadmin signal-api
 ```
 
 Apply migrations, then run the API:
@@ -185,10 +185,10 @@ docker compose up -d --build
 The app container applies migrations on start (`RUN_MIGRATIONS=true`) and can also run the
 seeders (`RUN_SEEDS=true`).
 
-| Service  | URL                                              | Credentials                            |
-| -------- | ------------------------------------------------ | -------------------------------------- |
-| API      | <http://localhost:8000> (docs at `/docs`)        | —                                      |
-| pgAdmin  | <http://localhost:5050>                          | `PGADMIN_EMAIL` / `PGADMIN_PASSWORD`   |
+| Service | URL                                       | Credentials                          |
+| ------- | ----------------------------------------- | ------------------------------------ |
+| API     | <http://localhost:8000> (docs at `/docs`) | —                                    |
+| pgAdmin | <http://localhost:5050>                   | `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` |
 
 ### Connecting a database UI
 
@@ -196,13 +196,13 @@ pgAdmin runs **inside a container**, so the database host is the compose service
 `postgres` — never `localhost`, which refers to pgAdmin's own container and fails with
 `connection refused`.
 
-| Field    | Value                              |
-| -------- | ---------------------------------- |
-| System   | PostgreSQL                         |
-| Server   | `postgres`                         |
-| Username | `POSTGRES_USER` (default `megabot`)   |
+| Field    | Value                                   |
+| -------- | --------------------------------------- |
+| System   | PostgreSQL                              |
+| Server   | `postgres`                              |
+| Username | `POSTGRES_USER` (default `megabot`)     |
 | Password | `POSTGRES_PASSWORD` (default `megabot`) |
-| Database | `POSTGRES_DB` (default `megabot`)     |
+| Database | `POSTGRES_DB` (default `megabot`)       |
 
 pgAdmin ships a pre-registered `megabot` server from `docker/pgadmin/servers.json`, so in
 practice you only enter the database password when expanding it. From your own machine
@@ -320,12 +320,12 @@ Both expect the interpreter at `.venv/bin/python` (created by `uv sync`).
 layout, architecture rules, CLI commands and conventions. Everything else is a thin wrapper
 pointing at it, so rules are never duplicated:
 
-| File                           | Tool                  | Contents            |
-| ------------------------------ | --------------------- | ------------------- |
-| `AGENTS.md`                    | Shared standard       | The actual rules    |
-| `CLAUDE.md`                    | Claude Code           | `@AGENTS.md` import |
-| `ANTIGRAVITY.md`               | Google Antigravity    | Link to `AGENTS.md` |
-| `.antigravity/rules/project.md`| Antigravity workspace | Link to `AGENTS.md` |
+| File                            | Tool                  | Contents            |
+| ------------------------------- | --------------------- | ------------------- |
+| `AGENTS.md`                     | Shared standard       | The actual rules    |
+| `CLAUDE.md`                     | Claude Code           | `@AGENTS.md` import |
+| `ANTIGRAVITY.md`                | Google Antigravity    | Link to `AGENTS.md` |
+| `.antigravity/rules/project.md` | Antigravity workspace | Link to `AGENTS.md` |
 
 Update `AGENTS.md` only — the wrappers never need to change.
 

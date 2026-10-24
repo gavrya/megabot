@@ -51,7 +51,11 @@ services:
     ports:
       - "${POSTGRES_EXPOSED_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-megabot} -d ${POSTGRES_DB:-megabot}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-megabot} -d ${POSTGRES_DB:-megabot}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -79,9 +83,35 @@ services:
     networks:
       - megabot
 
+  signal-api:
+    # The "latest" tag (0.101) still ships signal-cli 0.14.8.
+    # This CI build from master (2026-10-17) ships signal-cli 0.14.9.
+    image: bbernhard/signal-cli-rest-api:1792271041-ci
+    restart: unless-stopped
+    environment:
+      # native = fast GraalVM binary, one signal-cli call per request (simplest for a POC).
+      # Switch to json-rpc later for a long-running bot that receives messages via websocket.
+      MODE: ${SIGNAL_API_MODE:-native}
+      PORT: 8080
+    volumes:
+      # Linked-device keys and account state live here. Keep it private and backed up.
+      - signal-cli-data:/home/.local/share/signal-cli
+    ports:
+      # The API has no authentication: publish it on loopback only.
+      - "${SIGNAL_API_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - megabot
+
 volumes:
   postgres-data:
   pgadmin-data:
+  signal-cli-data:
 
 networks:
   megabot:
