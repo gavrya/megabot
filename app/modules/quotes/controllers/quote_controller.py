@@ -1,15 +1,15 @@
 from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, status, Depends
+
+from fastapi import APIRouter, Depends, status
 
 from app.modules.quotes.dtos.quote_create_dto import CreateQuoteDTO
-from app.modules.quotes.dtos.quote_update_dto import UpdateQuoteDTO
 from app.modules.quotes.dtos.quote_response_dto import QuoteResponseDTO
+from app.modules.quotes.dtos.quote_update_dto import UpdateQuoteDTO
 from app.modules.quotes.repositories.quote_repository import QuoteRepository
 from app.modules.quotes.services.quote_service import QuoteService
-from app.shared.dependencies import SessionDep, PageParamsDep
+from app.shared.dependencies import PageParamsDep, SessionDep
 from app.shared.dtos.page_dto import Page
-from app.shared.dtos.page_params_dto import PageParams
 
 
 def get_quote_service(session: SessionDep) -> QuoteService:
@@ -37,7 +37,9 @@ async def create_quote(dto: CreateQuoteDTO, service: QuoteServiceDep) -> QuoteRe
 
 
 @router.put("/{quote_id}", response_model=QuoteResponseDTO)
-async def update_quote(quote_id: UUID, dto: UpdateQuoteDTO, service: QuoteServiceDep) -> QuoteResponseDTO:
+async def update_quote(
+    quote_id: UUID, dto: UpdateQuoteDTO, service: QuoteServiceDep
+) -> QuoteResponseDTO:
     return await service.update(quote_id, dto)
 
 

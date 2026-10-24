@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+
 from app.modules.quotes.controllers import quote_controller
 
 # Main router for quotes module
