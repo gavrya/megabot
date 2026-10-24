@@ -7,4 +7,5 @@ class QuoteRepository(BaseRepository[QuoteEntity]):
     Repository for managing QuoteEntity database operations.
     Inherits all standard CRUD operations from BaseRepository.
     """
+
     model = QuoteEntity

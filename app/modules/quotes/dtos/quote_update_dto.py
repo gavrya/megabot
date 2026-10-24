@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class UpdateQuoteDTO(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
