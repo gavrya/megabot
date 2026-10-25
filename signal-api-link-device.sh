@@ -10,7 +10,7 @@
 # master (32f652e); remove this patch once a release with the fix is out.
 set -euo pipefail
 
-API="${API:-http://localhost:8080}"
+API="http://localhost:${SIGNAL_API_EXPOSED_PORT:-8080}"
 DEVICE_NAME="${1:-signal-bot-poc}"
 OUT="$(dirname "$0")/signal-api-qrcode.png"
 

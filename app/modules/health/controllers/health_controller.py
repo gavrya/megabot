@@ -26,7 +26,7 @@ async def health() -> HealthResponseDTO:
     database = await _check_database()
     return HealthResponseDTO(
         status="ok" if database == "up" else "degraded",
-        service=settings.app_name,
-        environment=settings.app_env,
+        service=settings.name,
+        environment=settings.env,
         database=database,
     )

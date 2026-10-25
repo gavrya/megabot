@@ -182,8 +182,8 @@ The API is on <http://localhost:8000>, docs on <http://localhost:8000/docs>.
 docker compose up -d --build
 ```
 
-The app container applies migrations on start (`RUN_MIGRATIONS=true`) and can also run the
-seeders (`RUN_SEEDS=true`).
+The app container applies migrations on start (`APP_RUN_MIGRATIONS=true`) and can also run
+the seeders (`APP_RUN_SEEDS=true`).
 
 | Service | URL                                       | Credentials                          |
 | ------- | ----------------------------------------- | ------------------------------------ |
@@ -296,10 +296,12 @@ environment variables, so it can be imported as-is:
 
 1. Create a new **Docker Compose** resource pointing at this repository.
 2. Paste the variables from `.env.example` into the platform's environment editor —
-   at minimum `POSTGRES_PASSWORD`, `APP_ENV=production`, `LOG_FORMAT=json`.
-3. Leave `DOCKER_POSTGRES_HOST=postgres` so the app reaches the database over the compose
-   network. (`POSTGRES_HOST` is only the host used when running the app outside Docker;
-   compose deliberately does not pass it to the container.)
+   at minimum `POSTGRES_PASSWORD` plus the same value in `APP_DB_PASSWORD`,
+   `APP_ENV=production`, `APP_LOG_FORMAT=json`. Each service reads only its own prefix, so
+   `APP_DB_USER` / `APP_DB_PASSWORD` / `APP_DB_NAME` must match their `POSTGRES_*` twins.
+3. The app reaches the database over the compose network at `postgres:5432`; compose sets
+   `APP_DB_HOST` / `APP_DB_PORT` for the container itself. (`APP_DB_HOST` in `.env` is only
+   the host used when running the app outside Docker; compose deliberately ignores it.)
 4. Let the platform's proxy route to the `app` service on container port `8000`; remove or
    ignore the `ports:` mappings if you do not want the ports published on the host.
 5. The `app` service has a `/health` healthcheck the platform uses for zero-downtime deploys.
@@ -331,7 +333,7 @@ Update `AGENTS.md` only — the wrappers never need to change.
 
 ## Logging
 
-Configured in `app/core/logging.py` and `app/shared/middlewares/logging_middleware.py`. `LOG_FORMAT=console` gives readable local output,
-`LOG_FORMAT=json` structured logs for production. Every request gets an `X-Request-ID`
+Configured in `app/core/logging.py` and `app/shared/middlewares/logging_middleware.py`. `APP_LOG_FORMAT=console` gives readable local output,
+`APP_LOG_FORMAT=json` structured logs for production. Every request gets an `X-Request-ID`
 (generated or taken from the incoming header) that is attached to each log line and
 returned in the response.

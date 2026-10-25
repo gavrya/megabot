@@ -101,4 +101,4 @@ Notes:
 - Account keys are stored in `./signal-cli-data/`. Back it up and keep it private: anyone with it can read and send as you. Delete it, and unlink the device on the phone, to log out.
 - A linked device that stays offline for a long time (about 30 days) is unlinked by Signal. Call `receive` regularly.
 - The API listens only on `127.0.0.1:8080`, so it isn't reachable from the network.
-- For a real bot, switch to `MODE=json-rpc` in `docker-compose.yml`. That mode receives messages over the websocket `ws://127.0.0.1:8080/v1/receive/<number>`. Restart the container after changing the mode.
+- For a real bot, set `SIGNAL_API_MODE=json-rpc` in `.env`. That mode receives messages over the websocket `ws://127.0.0.1:8080/v1/receive/<number>`. Restart the container after changing the mode.

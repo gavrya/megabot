@@ -8,7 +8,7 @@ install: ## Install dependencies into .venv
 	uv sync
 
 run: ## Run the API with autoreload
-	uv run uvicorn app.main:app --reload --host $${HOST:-0.0.0.0} --port $${PORT:-8000}
+	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 lint: ## Lint the code
 	uv run ruff check .

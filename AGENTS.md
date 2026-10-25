@@ -158,6 +158,14 @@ controller -> service -> repository -> entity
   inserted outside the ORM. Path parameters and service arguments are typed `UUID`.
 - Configuration comes from `app/core/config.py` (pydantic-settings). Never call `os.getenv`;
   add a typed field to `Settings` and document it in `.env.example`.
+- Every env var is namespaced by the docker-compose service it belongs to: `APP_`,
+  `POSTGRES_`, `PGADMIN_`, `SIGNAL_API_` (service `signal-api`). `Settings` uses
+  `env_prefix="APP_"`, so field `db_host` reads `APP_DB_HOST`. Each namespace gets its own
+  banner comment block in `.env.example`. In `docker-compose.yml` a service may interpolate
+  only variables with its own prefix — never `${POSTGRES_USER}` inside `app`, and no
+  cross-prefix references (`APP_DB_USER=${POSTGRES_USER}`) in `.env` either. Shared values
+  such as the DB credentials are therefore set twice (`POSTGRES_USER` and `APP_DB_USER`)
+  and must be kept in sync by hand.
 - Log via `app.core.logging.get_logger(__name__)` — never `print`. Each request carries an
   `X-Request-ID` that is attached automatically to every log line.
 - Errors are returned by the handlers in `app/shared/exceptions/exception_handlers.py` as
@@ -173,9 +181,10 @@ controller -> service -> repository -> entity
 
 ### Gotchas (verified, do not "fix" these)
 
-- `docker-compose.yml` passes `DOCKER_POSTGRES_HOST`, **not** `POSTGRES_HOST`, to the app
-  container. Compose auto-loads `.env`, where `POSTGRES_HOST=localhost` for local runs;
-  passing it through would make the container dial its own loopback.
+- `docker-compose.yml` hardcodes `APP_DB_HOST: postgres` / `APP_DB_PORT: 5432` for the app
+  container instead of interpolating `${APP_DB_HOST}`. Compose auto-loads `.env`, where
+  `APP_DB_HOST=localhost` for local runs; passing it through would make the container dial
+  its own loopback.
 - `README.md` must stay out of `.dockerignore` — hatchling reads it for package metadata and
   the image build fails without it.
 - Ruff's `TC` (flake8-type-checking) rules are deliberately **not** enabled. On Python 3.14 they
@@ -258,7 +267,7 @@ Docs at `/docs`, schema at `/openapi.json`.
   (`ArticleService`, `ArticleRepository`, `ArticleMapper`, `ArticleEntity`, `ArticleCreateDTO`).
 - Seeders are named `seed_<NNN>_<name>.py` and must be **idempotent** (check before insert).
 - Comments only where the "why" is not obvious; no restating of code.
-- `LOG_FORMAT=console` locally, `json` when deployed; `LOG_LEVEL` controls verbosity.
+- `APP_LOG_FORMAT=console` locally, `json` when deployed; `APP_LOG_LEVEL` controls verbosity.
 
 ### Adding a new module (checklist)
 
@@ -291,5 +300,5 @@ path and empty prefix together.
 
 `docker-compose.yml` targets Coolify / Dokploy / Portainer: Compose v2 spec, no `version:`
 key, every value driven by environment variables, `/health` used as the container healthcheck.
-The app container runs migrations on start (`RUN_MIGRATIONS=true`) and optionally the seeders
-(`RUN_SEEDS=true`). See the deployment section of `README.md`.
+The app container runs migrations on start (`APP_RUN_MIGRATIONS=true`) and optionally the
+seeders (`APP_RUN_SEEDS=true`). See the deployment section of `README.md`.
