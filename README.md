@@ -1,339 +1,244 @@
 # megabot
 
-Minimal, modern FastAPI service: async SQLAlchemy 2.0 + PostgreSQL, Alembic migrations,
-seeders, Pydantic v2 DTOs and a module-based (vertical slice) architecture.
+A bot for the [Signal](https://signal.org) messenger. It connects to Signal through
+[signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api), linked to an existing
+Signal account as a secondary device (the same way Signal Desktop is linked), and exposes its
+own FastAPI backend.
 
-```
-megabot/
-├── app/                                      # Application package
-│   ├── core/                                 # Infrastructure configuration
-│   │   ├── config.py                         # Typed settings loaded from the environment
-│   │   ├── database.py                       # Async engine, session factory, request-scoped session
-│   │   └── logging.py                        # Console/JSON formatters, request-id contextvar
-│   │
-│   ├── modules/                              # Domain / feature modules
-│   │   └── <module>/                         # One directory per feature (vertical slice)
-│   │       ├── controllers/                  # HTTP endpoints / handlers
-│   │       │   └── <module>_controller.py    # Routes: read input, call a service, return a DTO
-│   │       ├── dtos/                         # Module-specific Pydantic v2 schemas
-│   │       │   ├── <module>_create_dto.py    # One DTO per file: create payload
-│   │       │   ├── <module>_update_dto.py    # Update payload
-│   │       │   └── <module>_response_dto.py  # Response shape
-│   │       ├── entities/                     # SQLAlchemy ORM models
-│   │       │   └── <module>_entity.py        # Table definition; extends Base
-│   │       ├── mappers/                      # DTO <-> Entity converters
-│   │       │   └── <module>_mapper.py        # to_entity / apply_update / to_dto
-│   │       ├── repositories/                 # Database queries
-│   │       │   └── <module>_repository.py    # Queries; extends BaseRepository
-│   │       ├── services/                     # Business logic
-│   │       │   └── <module>_service.py       # Orchestrates repository + mapper; raises AppError
-│   │       ├── dependencies.py               # Module DI; exports <Module>ServiceDep
-│   │       └── router.py                     # Module router export; owns the URL prefix and tags
-│   │
-│   ├── shared/                               # Cross-cutting concerns & base classes
-│   │   ├── dtos/                             # Base DTOs & paginated responses
-│   │   │   ├── page_params_dto.py            # PageParams (limit/offset query params)
-│   │   │   ├── page_dto.py                   # Page[T] paginated envelope
-│   │   │   └── error_response_dto.py         # ErrorResponse body
-│   │   ├── entities/                         # Base ORM model
-│   │   │   ├── base_entity.py                # DeclarativeBase + naming convention
-│   │   │   ├── timestamp_mixin.py            # created_at / updated_at columns
-│   │   │   └── uuid_primary_key_mixin.py     # UUID primary key (id)
-│   │   ├── exceptions/                       # Custom domain errors & HTTP handlers
-│   │   │   ├── app_error.py                  # AppError base class
-│   │   │   ├── not_found_error.py            # NotFoundError (404)
-│   │   │   ├── conflict_error.py             # ConflictError (409)
-│   │   │   └── exception_handlers.py         # Maps raised errors to JSON error responses
-│   │   ├── middlewares/                      # ASGI middleware
-│   │   │   └── logging_middleware.py         # Request id, timing and access logging
-│   │   ├── repositories/                     # Generic data access
-│   │   │   └── base_repository.py            # Generic CRUD: get/list/count/add/update/delete
-│   │   └── dependencies.py                   # Shared DI: SessionDep, PageParamsDep
-│   │
-│   ├── registry.py                           # Entity autoloader: imports every entities/*_entity.py
-│   ├── router.py                             # Aggregates every module router
-│   └── main.py                               # App factory: middleware, handlers, lifespan
-│
-├── alembic/                                  # Migration environment
-│   ├── versions/                             # Migration files, one per schema change
-│   ├── env.py                                # Async migration runner; loads Base.metadata
-│   └── script.py.mako                        # Template used for new migration files
-│
-├── seeders/                                  # Database seeding
-│   ├── runner.py                             # Discovers and runs seeders in filename order
-│   └── seed_<NNN>_<name>.py                  # One seeder; exposes async run(session)
-│
-├── .vscode/                                  # VS Code settings, extensions, launch configs, tasks
-├── .antigravity/                             # Antigravity settings, extensions, rules
-├── AGENTS.md                                 # Master instructions for AI agents (source of truth)
-├── CLAUDE.md                                 # Claude Code wrapper -> AGENTS.md
-├── ANTIGRAVITY.md                            # Antigravity wrapper -> AGENTS.md
-├── Dockerfile                                # Multi-stage build: uv builder -> slim runtime
-├── docker-compose.yml                        # app + postgres + adminer, driven by env vars
-├── docker-entrypoint.sh                      # Runs migrations/seeds on start, then the CMD
-├── alembic.ini                               # Alembic config: script location, file naming
-├── Makefile                                  # Shortcuts for the commands below
-├── pyproject.toml                            # Dependencies + Ruff configuration
-├── .env.example                              # Documented template for .env
-└── .python-version                           # Python version pinned for uv
-```
+## Features
 
-There are no `__init__.py` files — packages are implicit (PEP 420). Each file declares exactly
-one class, named after the file — `article_create_dto.py` holds
-`ArticleCreateDTO` and nothing else. Every entity uses a **UUID primary key** from
-`UuidPrimaryKeyMixin` and timestamps from `TimestampMixin`. A module creates only the unit directories it needs: one
-without persistence has no `entities/`, `repositories/` or `mappers/`.
+- Can be added to Signal groups
+- Monitors group messages
+- Sends messages to a group or directly to a user
 
-Each feature is self-contained: adding one means adding a directory under `app/modules/`,
-not touching shared layer directories. Inside a module the flow is
-`controller -> service -> repository -> entity`, with the mapper converting entities to DTOs.
-Controllers never touch the ORM, services never return entities, repositories never commit.
+## Tech Stack
 
-## Endpoints
+- **Python 3.14** with **uv** for packages and Python versions
+- **FastAPI** + **uvicorn**
+- **Pydantic v2** + pydantic-settings
+- **PostgreSQL 17** with **SQLAlchemy 2.0** (async, `asyncpg`)
+- **Alembic** for migrations
+- **signal-cli-rest-api** for the Signal connection
+- **Ruff** for linting and formatting
+- **Docker** / Docker Compose (app, postgres, pgadmin, signal-api)
 
-| Method | Path                      | Description                       |
-| ------ | ------------------------- | --------------------------------- |
-| GET    | `/health`                 | Health check (incl. DB liveness)  |
-| GET    | `/api/v1/articles`        | List articles (`limit`, `offset`) |
-| POST   | `/api/v1/articles`        | Create an article                 |
-| GET    | `/api/v1/articles/{uuid}` | Get one article                   |
-| PUT    | `/api/v1/articles/{uuid}` | Update an article                 |
-| DELETE | `/api/v1/articles/{uuid}` | Delete an article                 |
+## Requirements
 
-Interactive docs: <http://localhost:8000/docs>
+- [uv](https://docs.astral.sh/uv/) (installs Python 3.14 for you)
+- [Docker](https://docs.docker.com/get-docker/) with Compose v2
+- `make` (optional, for shortcuts)
+- `qrencode`, for linking the Signal device
+- A Signal account on a phone, to approve the device link
 
----
+## Development
 
-## 1. Prepare the local environment
-
-### Install uv
-
-`uv` manages both Python itself and the project dependencies — you do not need a
-pre-installed Python.
+### Clone the Repository
 
 ```bash
-# macOS / Linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
+git clone https://github.com/gavrya/megabot.git
+cd megabot
 ```
+
+### Setup
+
+Install uv. It manages both Python and the project dependencies, so you don't need a
+pre-installed Python:
 
 ```bash
-# macOS (Homebrew)
-brew install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS / Linux
+brew install uv                                   # or with Homebrew
 ```
 
-```powershell
-# Windows (PowerShell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-### Install Python
-
-The version is pinned in `.python-version`:
+Then install Python and the dependencies:
 
 ```bash
-uv python install 3.14
+uv python install 3.14   # version pinned in .python-version
+uv sync                  # creates .venv and installs all dependencies
 ```
 
-### Other tools
-
-- **Docker** (with Compose v2) — for PostgreSQL and pgAdmin: <https://docs.docker.com/get-docker/>
-- **make** (optional) — shortcuts for every command below; preinstalled on macOS/Linux.
-- **Ruff** is installed as a dev dependency, no separate install needed.
-
-## 2. Install packages
+Common uv commands:
 
 ```bash
-uv sync
+uv sync                    # install dependencies from uv.lock
+uv add <package>           # add a runtime dependency
+uv add --dev <package>     # add a dev-only dependency
+uv remove <package>        # remove a dependency
+uv run <command>           # run a command inside the project's .venv
 ```
 
-This creates `.venv/`, installs runtime + dev dependencies and writes `uv.lock`.
-
-Add a package later:
+Install `qrencode`, used to render the QR code when linking the Signal device:
 
 ```bash
-uv add <package>          # runtime dependency
-uv add --dev <package>    # dev-only dependency
+brew install qrencode            # macOS
+sudo apt install qrencode        # Debian / Ubuntu
+sudo dnf install qrencode        # Fedora / RHEL
+sudo pacman -S qrencode          # Arch
 ```
 
-## 3. Configure and run
+### Configure Environment Variables
+
+Copy `.env.example` to `.env` and configure the required variables.
 
 ```bash
 cp .env.example .env
 ```
 
-Start PostgreSQL, pgAdmin (<http://localhost:5050>) and signal-api (<http://localhost:8080>):
+Variables are grouped by service prefix: `APP_`, `POSTGRES_`, `PGADMIN_`, `SIGNAL_API_`.
+The database credentials are set twice (`POSTGRES_*` and `APP_DB_*`) and must match.
+
+### Start the Application
+
+Start the supporting services, apply migrations and run the API locally:
 
 ```bash
-docker compose up -d postgres pgadmin signal-api
+docker compose up -d postgres pgadmin signal-api   # start database, pgAdmin and Signal API
+uv run alembic upgrade head                        # apply database migrations
+uv run seed                                        # (optional) fill the database with seed data
+uv run uvicorn app.main:app --reload               # run the API with autoreload
 ```
 
-Apply migrations, then run the API:
+The API runs on <http://localhost:8000>.
 
-```bash
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
-```
-
-The API is on <http://localhost:8000>, docs on <http://localhost:8000/docs>.
-
-### Run everything in Docker
+Or run the full stack in Docker (migrations are applied on start):
 
 ```bash
 docker compose up -d --build
 ```
 
-The app container applies migrations on start (`APP_RUN_MIGRATIONS=true`) and can also run
-the seeders (`APP_RUN_SEEDS=true`).
+#### Link the Signal device
 
-| Service | URL                                       | Credentials                          |
-| ------- | ----------------------------------------- | ------------------------------------ |
-| API     | <http://localhost:8000> (docs at `/docs`) | —                                    |
-| pgAdmin | <http://localhost:5050>                   | `PGADMIN_EMAIL` / `PGADMIN_PASSWORD` |
+1. On the phone, open **Signal → Settings → Linked devices → Link new device (+)**.
+2. Run `./signal-api-link-device.sh` and scan the QR code right away (it expires in about a
+   minute).
+3. Check the result: `curl -s http://127.0.0.1:8080/v1/accounts`
+   - `[]` means not linked yet.
+   - `["+15551234567"]` means it's linked, with that number as the account ID.
+   - `[""]` means a **phoneless** account is linked. It has no number, so use its account UUID
+     wherever the API asks for a number. Get the UUID with:
 
-### Connecting a database UI
+     ```bash
+     python3 -c "import json;print(json.load(open('signal-cli-data/data/accounts.json'))['accounts'][0]['uuid'])"
+     ```
 
-pgAdmin runs **inside a container**, so the database host is the compose service name
-`postgres` — never `localhost`, which refers to pgAdmin's own container and fails with
-`connection refused`.
+Account keys are stored in `./signal-cli-data/`. Keep this directory private.
 
-| Field    | Value                                   |
-| -------- | --------------------------------------- |
-| System   | PostgreSQL                              |
-| Server   | `postgres`                              |
-| Username | `POSTGRES_USER` (default `megabot`)     |
-| Password | `POSTGRES_PASSWORD` (default `megabot`) |
-| Database | `POSTGRES_DB` (default `megabot`)       |
+### Database Migrations
 
-pgAdmin ships a pre-registered `megabot` server from `docker/pgadmin/servers.json`, so in
-practice you only enter the database password when expanding it. From your own machine
-(psql, TablePlus, DataGrip) use `localhost:5432` instead — the port is published.
+Migrations live in `alembic/versions/`. The database must be running (`docker compose up -d postgres`).
 
-### Lint and format
+#### Check status
 
 ```bash
-uv run ruff check .          # lint
-uv run ruff check . --fix    # lint + autofix
-uv run ruff format .         # format
+uv run alembic current             # revision the database is at
+uv run alembic heads               # latest revision in the code
+uv run alembic history --verbose   # all revisions
 ```
 
-With make: `make lint`, `make format`, `make check` (CI-safe, writes nothing).
+If `current` and `heads` show the same revision, the database is up to date.
 
-## 4. Migrations
+#### Create a migration
 
-Migrations live in `alembic/versions/` and are generated against the entities declared in
-each module (`app/modules/<module>/entities/<module>_entity.py`).
+From the entities (`app/modules/<module>/entities/<module>_entity.py`). Alembic compares them
+with the database and writes the difference:
 
 ```bash
-# Autogenerate from the entities (diff of models vs. database)
-uv run alembic revision --autogenerate -m "add published flag"
-
-# Create an empty migration to write by hand
-uv run alembic revision -m "backfill article slugs"
-
-# Apply everything pending
-uv run alembic upgrade head
-
-# Roll back the last migration / go to a specific revision
-uv run alembic downgrade -1
-uv run alembic downgrade 0001_articles
-
-# Inspect
-uv run alembic current
-uv run alembic history --verbose
+uv run alembic revision --autogenerate -m "add x"   # or: make migration m="add x"
 ```
 
-Always review an autogenerated migration before committing it — Alembic detects most, but
-not all, changes.
-
-> Entities are autoloaded by `app/registry.py`, which imports every
-> `app/**/entities/*_entity.py` — module and shared entities alike. Keep the `entities/`
-> directory and the `_entity.py` suffix, or autogenerate will not see the table.
-
-## 5. Seeds
-
-Seeders are plain modules in `seeders/`, named `seed_<NNN>_<name>.py` and exposing
-`async def run(session: AsyncSession) -> None`. The runner executes them in filename order
-and commits after each one.
+Manually, as an empty migration to fill in yourself (data changes, custom SQL):
 
 ```bash
-uv run seed                  # run all seeders
+uv run alembic revision -m "backfill x"
+```
+
+Always review the generated file in `alembic/versions/` before committing it. Autogenerate
+doesn't detect every change.
+
+#### Run migrations
+
+```bash
+uv run alembic upgrade head   # apply all pending migrations (make migrate)
+uv run alembic downgrade -1   # roll back the last migration (make rollback)
+```
+
+Never edit a migration that has already been applied; create a new one instead.
+
+### Database Seeds
+
+Seeders fill the database with initial data. They live in `seeders/`, are named
+`seed_<NNN>_<name>.py` and run in filename order. The database must be running and migrated.
+
+#### Run seeders
+
+```bash
+uv run seed                  # run all seeders (make seed)
 uv run seed --only <name>    # run only seeders whose filename contains <name>
 ```
 
-Create a new seeder:
+In Docker, set `APP_RUN_SEEDS=true` in `.env` to run them on container start.
 
-```bash
-cat > seeders/seed_002_tags.py <<'EOF'
+#### Create a seeder
+
+Add a file `seeders/seed_<NNN>_<name>.py` with the next free number. It must expose
+`async def run(session)`:
+
+```python
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def run(session: AsyncSession) -> None:
     ...
-EOF
 ```
 
-Keep seeders idempotent (check before insert) so they can be re-run safely.
+Keep seeders idempotent: check before insert, so running them again doesn't create duplicates.
+The runner commits after each seeder, so don't commit inside `run`.
 
-## Make targets
+### App API swagger docs
+
+Interactive docs: <http://localhost:8000/docs>
+
+### Signal API swagger docs
+
+[signal-cli-rest-api](https://github.com/bbernhard/signal-cli-rest-api) is a REST wrapper
+around `signal-cli`, a command-line Signal client. It runs as the `signal-api` Docker service,
+is linked to your Signal account as a secondary device, and lets the bot send and receive
+messages over plain HTTP. It listens only on `127.0.0.1:8080`.
+
+- GitHub: <https://github.com/bbernhard/signal-cli-rest-api>
+- Docker Hub: <https://hub.docker.com/r/bbernhard/signal-cli-rest-api>
+
+Interactive docs: <http://127.0.0.1:8080/swagger/index.html> (available while the
+`signal-api` container is running).
+
+### Database web client
+
+pgAdmin runs on <http://localhost:5050>. Log in with `PGADMIN_EMAIL` / `PGADMIN_PASSWORD`.
+A `megabot` server is pre-registered, so you only enter the database password
+(`POSTGRES_PASSWORD`). Inside pgAdmin the database host is `postgres`, not `localhost`.
+
+### Code Quality
 
 ```bash
-make help       # list all targets
-make install    # uv sync
-make run        # uvicorn with reload
-make lint       # ruff check
-make format     # ruff format + fix
-make migration m="add x"   # autogenerate a migration
-make migrate    # alembic upgrade head
-make rollback   # alembic downgrade -1
-make seed       # run seeders
-make up/down/logs          # docker compose
+uv run ruff check .          # lint
+uv run ruff check . --fix    # lint and autofix
+uv run ruff format .         # format
+uv run ruff format --check . # check formatting without writing (CI)
 ```
 
-## Deployment (Coolify / Dokploy / Portainer)
+### Make commands
 
-`docker-compose.yml` is plain Compose v2 with no `version:` key and every value driven by
-environment variables, so it can be imported as-is:
-
-1. Create a new **Docker Compose** resource pointing at this repository.
-2. Paste the variables from `.env.example` into the platform's environment editor —
-   at minimum `POSTGRES_PASSWORD` plus the same value in `APP_DB_PASSWORD`,
-   `APP_ENV=production`, `APP_LOG_FORMAT=json`. Each service reads only its own prefix, so
-   `APP_DB_USER` / `APP_DB_PASSWORD` / `APP_DB_NAME` must match their `POSTGRES_*` twins.
-3. The app reaches the database over the compose network at `postgres:5432`; compose sets
-   `APP_DB_HOST` / `APP_DB_PORT` for the container itself. (`APP_DB_HOST` in `.env` is only
-   the host used when running the app outside Docker; compose deliberately ignores it.)
-4. Let the platform's proxy route to the `app` service on container port `8000`; remove or
-   ignore the `ports:` mappings if you do not want the ports published on the host.
-5. The `app` service has a `/health` healthcheck the platform uses for zero-downtime deploys.
-
-## IDE setup
-
-- **VS Code** — `.vscode/` ships settings, recommended extensions, launch configs
-  (uvicorn with debugger, seed runner) and tasks. Open the folder and accept the extension
-  recommendations; Ruff formats on save and fixes imports.
-- **Google Antigravity** — `.antigravity/` mirrors those settings. Antigravity is
-  VS Code-based, so `.vscode/` applies as well.
-
-Both expect the interpreter at `.venv/bin/python` (created by `uv sync`).
-
-## AI agent instructions
-
-`AGENTS.md` in the repository root is the single source of truth: tech stack, directory
-layout, architecture rules, CLI commands and conventions. Everything else is a thin wrapper
-pointing at it, so rules are never duplicated:
-
-| File                            | Tool                  | Contents            |
-| ------------------------------- | --------------------- | ------------------- |
-| `AGENTS.md`                     | Shared standard       | The actual rules    |
-| `CLAUDE.md`                     | Claude Code           | `@AGENTS.md` import |
-| `ANTIGRAVITY.md`                | Google Antigravity    | Link to `AGENTS.md` |
-| `.antigravity/rules/project.md` | Antigravity workspace | Link to `AGENTS.md` |
-
-Update `AGENTS.md` only — the wrappers never need to change.
-
-## Logging
-
-Configured in `app/core/logging.py` and `app/shared/middlewares/logging_middleware.py`. `APP_LOG_FORMAT=console` gives readable local output,
-`APP_LOG_FORMAT=json` structured logs for production. Every request gets an `X-Request-ID`
-(generated or taken from the incoming header) that is attached to each log line and
-returned in the response.
+| Command                  | Description                           |
+| ------------------------ | ------------------------------------- |
+| `make help`              | List all commands                     |
+| `make install`           | Install dependencies (`uv sync`)      |
+| `make run`               | Run the API with autoreload           |
+| `make lint`              | Lint the code                         |
+| `make format`            | Format the code and apply safe fixes  |
+| `make check`             | Lint and format check, writes nothing |
+| `make migration m="msg"` | Autogenerate a migration              |
+| `make migrate`           | Apply all pending migrations          |
+| `make rollback`          | Roll back the last migration          |
+| `make seed`              | Run all seeders                       |
+| `make up`                | Start the full stack in Docker        |
+| `make down`              | Stop the stack                        |
+| `make logs`              | Tail the app logs                     |
