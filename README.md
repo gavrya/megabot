@@ -317,6 +317,10 @@ uv run pytest tests/unit -k handler    # filter by test name
 Each test is also marked `unit` or `integration` after its directory, so
 `uv run pytest -m unit` works too.
 
+The minimum coverage level is 40%, set by `fail_under` in `[tool.coverage.report]` in
+`pyproject.toml`. Any run with `--cov` fails below it, including CI, which runs the unit tests
+with coverage.
+
 `APP_DB_NAME=megabot_test` and a quieter log level are set in `[tool.pytest.ini_options]` in
 `pyproject.toml` (via pytest-env). They override `.env` and your shell, so a test run never
 touches the development database.
