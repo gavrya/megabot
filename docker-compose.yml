@@ -4,27 +4,26 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/app/Dockerfile
     image: megabot:latest
     restart: unless-stopped
     environment:
       APP_NAME: ${APP_NAME:-megabot}
       APP_ENV: ${APP_ENV:-production}
-      DEBUG: ${DEBUG:-false}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LOG_FORMAT: ${LOG_FORMAT:-json}
-      # In-network address of the db service. Deliberately NOT ${POSTGRES_HOST}:
-      # that variable points at localhost for local (non-Docker) development.
-      POSTGRES_HOST: ${DOCKER_POSTGRES_HOST:-postgres}
-      POSTGRES_PORT: ${DOCKER_POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-megabot}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-megabot}
-      POSTGRES_DB: ${POSTGRES_DB:-megabot}
-      CORS_ORIGINS: ${CORS_ORIGINS:-["*"]}
-      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
-      RUN_SEEDS: ${RUN_SEEDS:-false}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+      APP_LOG_FORMAT: ${APP_LOG_FORMAT:-json}
+      APP_DB_HOST: postgres
+      APP_DB_PORT: 5432
+      APP_DB_USER: ${APP_DB_USER:-megabot}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-megabot}
+      APP_DB_NAME: ${APP_DB_NAME:-megabot}
+      APP_DB_ECHO: ${APP_DB_ECHO:-false}
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-["*"]}
+      APP_RUN_MIGRATIONS: ${APP_RUN_MIGRATIONS:-true}
+      APP_RUN_SEEDS: ${APP_RUN_SEEDS:-false}
     ports:
-      - "${APP_PORT:-8000}:8000"
+      - "${APP_EXPOSED_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,7 +50,11 @@ services:
     ports:
       - "${POSTGRES_EXPOSED_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-megabot} -d ${POSTGRES_DB:-megabot}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-megabot} -d ${POSTGRES_DB:-megabot}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -69,19 +72,44 @@ services:
       PGADMIN_LISTEN_PORT: 80
     volumes:
       - pgadmin-data:/var/lib/pgadmin
-      # Pre-registers the db connection, so the host is never mistyped as localhost.
       - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
     ports:
-      - "${PGADMIN_PORT:-5050}:80"
+      - "${PGADMIN_EXPOSED_PORT:-5050}:80"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - megabot
 
+  signal-api:
+    # The "latest" tag (0.101) still ships signal-cli 0.14.8.
+    # This CI build from master (2026-10-17) ships signal-cli 0.14.9.
+    image: bbernhard/signal-cli-rest-api:1792271041-ci
+    restart: unless-stopped
+    environment:
+      # native = fast GraalVM binary, one signal-cli call per request (simplest for a POC).
+      # Switch to json-rpc later for a long-running bot that receives messages via websocket.
+      MODE: ${SIGNAL_API_MODE:-native}
+      PORT: 8080
+    volumes:
+      # Linked-device keys and account state live here. Keep it private and backed up.
+      - signal-cli-data:/home/.local/share/signal-cli
+    ports:
+      # The API has no authentication: published on loopback unless overridden.
+      - "${SIGNAL_API_EXPOSED_HOST:-127.0.0.1}:${SIGNAL_API_EXPOSED_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - megabot
+
 volumes:
   postgres-data:
   pgadmin-data:
+  signal-cli-data:
 
 networks:
   megabot:

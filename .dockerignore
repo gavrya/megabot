@@ -17,3 +17,6 @@ postgres-data
 *.log
 
 # README.md is intentionally kept: the package metadata references it.
+
+# Tests are not shipped in the image.
+tests

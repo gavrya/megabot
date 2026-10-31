@@ -24,9 +24,10 @@ RUN groupadd --system app && useradd --system --gid app --home /app app
 
 WORKDIR /app
 COPY --from=builder --chown=app:app /app /app
+COPY --chmod=755 docker/app/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 USER app
 EXPOSE 8000
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

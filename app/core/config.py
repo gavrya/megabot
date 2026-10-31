@@ -7,30 +7,25 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
+        env_prefix="APP_",
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
-    app_name: str = "megabot"
-    app_env: Literal["local", "development", "staging", "production"] = "local"
+    name: str = "megabot"
+    env: Literal["local", "development", "staging", "production"] = "local"
     debug: bool = False
-
-    host: str = "0.0.0.0"
-    port: int = 8000
 
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_format: Literal["json", "console"] = "console"
 
-    postgres_host: str = "localhost"
-    postgres_port: int = 5432
-    postgres_user: str = "megabot"
-    postgres_password: str = "megabot"
-    postgres_db: str = "megabot"
-
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_user: str = "megabot"
+    db_password: str = "megabot"
+    db_name: str = "megabot"
     db_echo: bool = False
-    db_pool_size: int = 5
-    db_max_overflow: int = 10
 
     cors_origins: list[str] = Field(default_factory=lambda: ["*"])
 
@@ -39,11 +34,11 @@ class Settings(BaseSettings):
     def database_url(self) -> PostgresDsn:
         return PostgresDsn.build(
             scheme="postgresql+asyncpg",
-            username=self.postgres_user,
-            password=self.postgres_password,
-            host=self.postgres_host,
-            port=self.postgres_port,
-            path=self.postgres_db,
+            username=self.db_user,
+            password=self.db_password,
+            host=self.db_host,
+            port=self.db_port,
+            path=self.db_name,
         )
 
 

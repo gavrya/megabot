@@ -3,10 +3,10 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.entities.base_entity import Base
+from app.shared.entities.uuid_primary_key_mixin import UuidPrimaryKeyMixin
 
 
-class BaseRepository[ModelT: Base]:
+class BaseRepository[ModelT: UuidPrimaryKeyMixin]:
     model: type[ModelT]
 
     def __init__(self, session: AsyncSession) -> None:

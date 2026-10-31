@@ -19,6 +19,13 @@ seed = "seeders.runner:main"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
+    "pre-commit>=4.7.0",
+    "pyright>=1.1.414",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
+    "pytest-cov>=7.1.0",
+    "pytest-env>=1.8.3",
     "ruff>=0.8.0",
 ]
 
@@ -62,4 +69,46 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# No __init__.py anywhere, so test modules are imported by path rather than as packages.
+addopts = ["--import-mode=importlib", "-ra", "--strict-markers", "--strict-config"]
+asyncio_mode = "auto"
+# One loop for the whole run: asyncpg connections are bound to the loop that opened them.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+# Applied by tests/conftest.py from the directory a test lives in.
+markers = [
+    "unit: tests/unit, needs nothing running",
+    "integration: tests/integration, needs PostgreSQL (skipped when it is unreachable)",
+]
+# Set by pytest-env before `app` is imported. Overrides .env and the shell, so a test run can
+# never touch the development database.
+env = [
+    "APP_DB_NAME=megabot_test",
+    "APP_LOG_LEVEL=WARNING",
+    "APP_LOG_FORMAT=console",
+]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 40
+
+[tool.pyright]
+include = ["app", "seeders", "alembic", "tests"]
+exclude = ["**/__pycache__", ".venv"]
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
+# Project root as the import root: packages are implicit (no __init__.py).
+extraPaths = ["."]
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
 

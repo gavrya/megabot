@@ -17,15 +17,15 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-    logger.info("%s starting (env=%s)", settings.app_name, settings.app_env)
+    logger.info("%s starting (env=%s)", settings.name, settings.env)
     yield
     await engine.dispose()
-    logger.info("%s stopped", settings.app_name)
+    logger.info("%s stopped", settings.name)
 
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title=settings.app_name,
+        title=settings.name,
         version="0.1.0",
         debug=settings.debug,
         lifespan=lifespan,

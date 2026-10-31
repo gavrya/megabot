@@ -1,0 +1,55 @@
+# Git hooks, managed by pre-commit. Install once per clone with `make hooks`.
+# Every hook is `language: system` and runs through `uv run`, so it uses the exact tool
+# versions pinned in uv.lock rather than a separate copy downloaded by pre-commit.
+default_install_hook_types: [pre-commit, pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      # pre-commit: fix the staged Python files. pre-commit stashes unstaged changes first, so
+      # only staged content is touched; if a hook rewrites a file the commit is aborted and the
+      # fixes are left in the working tree to review and `git add`.
+      - id: ruff-fix
+        name: ruff lint (fix)
+        entry: uv run --frozen ruff check --fix --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+        stages: [pre-commit]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --frozen ruff format --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+        stages: [pre-commit]
+
+      # pre-push: check the whole project, writing nothing. Any failure blocks the push.
+      - id: ruff-check
+        name: ruff lint (check)
+        entry: uv run --frozen ruff check .
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: ruff-format-check
+        name: ruff format (check)
+        entry: uv run --frozen ruff format --check .
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: pyright
+        name: pyright
+        entry: uv run --frozen pyright
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+      - id: pytest-unit
+        name: pytest (unit)
+        entry: uv run --frozen pytest tests/unit -q
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

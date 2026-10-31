@@ -7,8 +7,8 @@ from app.core.config import settings
 engine = create_async_engine(
     str(settings.database_url),
     echo=settings.db_echo,
-    pool_size=settings.db_pool_size,
-    max_overflow=settings.db_max_overflow,
+    pool_size=10,
+    max_overflow=10,
     pool_pre_ping=True,
 )
 

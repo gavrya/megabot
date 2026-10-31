@@ -27,3 +27,9 @@ htmlcov/
 # Local data
 postgres-data/
 *.log
+todo.md
+TODO.md
+
+# Signal api
+signal-cli-data/
+signal-api-qrcode.png
