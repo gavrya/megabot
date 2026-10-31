@@ -246,10 +246,10 @@ Every hook runs through `uv run`, so it uses the Ruff, Pyright and pytest versio
 
 **On commit**, only the staged Python files are checked:
 
-| Hook          | Command                 |
-| ------------- | ----------------------- |
-| `ruff-fix`    | `ruff check --fix`      |
-| `ruff-format` | `ruff format`           |
+| Hook          | Command            |
+| ------------- | ------------------ |
+| `ruff-fix`    | `ruff check --fix` |
+| `ruff-format` | `ruff format`      |
 
 Unstaged changes are stashed before the hooks run and restored afterwards, so only what you
 are committing is touched. If a hook changes a file, the commit is **aborted** and the fixes
@@ -258,12 +258,12 @@ can't be fixed automatically, fix it by hand.
 
 **On push**, the whole project is checked and nothing is written. Any failure blocks the push:
 
-| Hook                | Command                        |
-| ------------------- | ------------------------------ |
-| `ruff-check`        | `ruff check .`                 |
-| `ruff-format-check` | `ruff format --check .`        |
-| `pyright`           | `pyright`                      |
-| `pytest-unit`       | `pytest tests/unit`            |
+| Hook                | Command                 |
+| ------------------- | ----------------------- |
+| `ruff-check`        | `ruff check .`          |
+| `ruff-format-check` | `ruff format --check .` |
+| `pyright`           | `pyright`               |
+| `pytest-unit`       | `pytest tests/unit`     |
 
 Integration tests are not part of the hook because they need PostgreSQL. Run them yourself
 with `make test-integration`.
@@ -310,7 +310,8 @@ tests/
 uv run pytest                          # all tests (make test)
 uv run pytest tests/unit               # unit tests (make test-unit)
 uv run pytest tests/integration        # integration tests (make test-integration)
-uv run pytest --cov --cov-report=term  # all tests with coverage (make test-cov)
+uv run pytest --cov --cov-report=html  # all tests with coverage (Prints a coverage summary in htmlcov/index.html)
+uv run pytest --cov --cov-report=term  # all tests with coverage (Prints a coverage summary in the terminal)
 uv run pytest tests/unit -k handler    # filter by test name
 ```
 
