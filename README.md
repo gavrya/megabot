@@ -20,6 +20,7 @@ own FastAPI backend.
 - **Alembic** for migrations
 - **signal-cli-rest-api** for the Signal connection
 - **Ruff** for linting and formatting
+- **Pyright** for static type checking
 - **Docker** / Docker Compose (app, postgres, pgadmin, signal-api)
 
 ## Requirements
@@ -186,8 +187,7 @@ Add a file `seeders/seed_<NNN>_<name>.py` with the next free number. It must exp
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-async def run(session: AsyncSession) -> None:
-    ...
+async def run(session: AsyncSession) -> None: ...
 ```
 
 Keep seeders idempotent: check before insert, so running them again doesn't create duplicates.
@@ -223,22 +223,28 @@ uv run ruff check .          # lint
 uv run ruff check . --fix    # lint and autofix
 uv run ruff format .         # format
 uv run ruff format --check . # check formatting without writing (CI)
+uv run pyright               # type check
 ```
+
+Pyright is configured under `[tool.pyright]` in `pyproject.toml`. VS Code (Pylance) and
+Antigravity (basedpyright) read the same section, so the editor reports the same errors as
+the CLI.
 
 ### Make commands
 
-| Command                  | Description                           |
-| ------------------------ | ------------------------------------- |
-| `make help`              | List all commands                     |
-| `make install`           | Install dependencies (`uv sync`)      |
-| `make run`               | Run the API with autoreload           |
-| `make lint`              | Lint the code                         |
-| `make format`            | Format the code and apply safe fixes  |
-| `make check`             | Lint and format check, writes nothing |
-| `make migration m="msg"` | Autogenerate a migration              |
-| `make migrate`           | Apply all pending migrations          |
-| `make rollback`          | Roll back the last migration          |
-| `make seed`              | Run all seeders                       |
-| `make up`                | Start the full stack in Docker        |
-| `make down`              | Stop the stack                        |
-| `make logs`              | Tail the app logs                     |
+| Command                  | Description                                 |
+| ------------------------ | ------------------------------------------- |
+| `make help`              | List all commands                           |
+| `make install`           | Install dependencies (`uv sync`)            |
+| `make run`               | Run the API with autoreload                 |
+| `make lint`              | Lint the code                               |
+| `make format`            | Format the code and apply safe fixes        |
+| `make typecheck`         | Type-check the code with pyright            |
+| `make check`             | Lint, format and type check, writes nothing |
+| `make migration m="msg"` | Autogenerate a migration                    |
+| `make migrate`           | Apply all pending migrations                |
+| `make rollback`          | Roll back the last migration                |
+| `make seed`              | Run all seeders                             |
+| `make up`                | Start the full stack in Docker              |
+| `make down`              | Stop the stack                              |
+| `make logs`              | Tail the app logs                           |

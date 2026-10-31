@@ -235,8 +235,10 @@ already base64, so it gets base64-encoded a second time:
 ```python
 import base64
 
+
 def to_rest_group_id(internal_id: str) -> str:
     return "group." + base64.b64encode(internal_id.encode()).decode()
+
 
 def to_internal_group_id(rest_id: str) -> str:
     return base64.b64decode(rest_id.removeprefix("group.")).decode()
@@ -396,9 +398,10 @@ Minimal Python consumer (`uv add websockets`):
 import asyncio, json
 import websockets
 
+
 async def consume(account: str) -> None:
     url = f"ws://signal-api:8080/v1/receive/{account}"
-    async for ws in websockets.connect(url):          # reconnects automatically
+    async for ws in websockets.connect(url):  # reconnects automatically
         try:
             async for frame in ws:
                 item = json.loads(frame)
@@ -558,7 +561,7 @@ def handle(env: dict) -> None:
     if dm := env.get("dataMessage"):
         group = dm.get("groupInfo")
         if group and group.get("type") == "UPDATE":
-            return on_group_update(to_rest_group_id(group["groupId"]))   # refresh /v1/groups
+            return on_group_update(to_rest_group_id(group["groupId"]))  # refresh /v1/groups
         if dm.get("reaction"):
             return on_reaction(sender, dm["reaction"])
         if dm.get("remoteDelete"):
@@ -570,7 +573,7 @@ def handle(env: dict) -> None:
         return on_edit(sender, edit["targetSentTimestamp"], edit["dataMessage"].get("message"))
 
     if sent := env.get("syncMessage", {}).get("sentMessage"):
-        return on_own_message(sent)        # from our phone. Never auto-reply to these
+        return on_own_message(sent)  # from our phone. Never auto-reply to these
 
     # receiptMessage, typingMessage, callMessage, storyMessage: ignore or log
 ```

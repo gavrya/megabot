@@ -26,6 +26,12 @@
       "problemMatcher": []
     },
     {
+      "label": "typecheck",
+      "type": "shell",
+      "command": "uv run pyright",
+      "problemMatcher": []
+    },
+    {
       "label": "migrate",
       "type": "shell",
       "command": "uv run alembic upgrade head",

@@ -16,6 +16,7 @@ duplicate rules into them.
 | ORM             | SQLAlchemy 2.0, async, `asyncpg` driver       |
 | Migrations      | Alembic (async env)                           |
 | Lint + format   | Ruff (line length 100, target py312)          |
+| Type checking   | Pyright (`standard` mode, `[tool.pyright]`)   |
 | Container       | Docker, `python:3.14-slim-bookworm` runtime   |
 | Tests           | None — this project intentionally has no tests |
 
@@ -98,7 +99,7 @@ megabot/
 ├── docker-compose.yml                        # app + postgres + adminer, driven by env vars
 ├── alembic.ini                               # Alembic config: script location, file naming
 ├── Makefile                                  # Shortcuts for every command in this file
-├── pyproject.toml                            # Dependencies + Ruff configuration
+├── pyproject.toml                            # Dependencies + Ruff/Pyright config
 ├── .env.example                              # Documented template for .env
 └── .python-version                           # Python version pinned for uv
 ```
@@ -179,7 +180,8 @@ controller -> service -> repository -> entity
   runs — module and shared entities alike. The `entities/` directory plus the `_entity.py`
   suffix is what makes a table visible to Alembic.
 - New dependency? `uv add <pkg>` (never edit `pyproject.toml` by hand) and commit `uv.lock`.
-- Run `uv run ruff format . && uv run ruff check . --fix` before finishing a change.
+- Run `uv run ruff format . && uv run ruff check . --fix && uv run pyright` before finishing a
+  change; pyright must report 0 errors.
 - Do **not** write unit tests; verify changes by running the app against the local stack.
 
 ### Gotchas (verified, do not "fix" these)
@@ -221,13 +223,14 @@ docker compose up -d --build             # full stack in Docker (make up)
 docker compose down                      # stop (make down); add -v to wipe the DB volume
 ```
 
-### Lint & format
+### Lint, format & type check
 
 ```bash
 uv run ruff check .            # lint (make lint)
 uv run ruff format .           # format (make format also runs --fix)
 uv run ruff check . --fix
-uv run ruff format --check .   # CI, writes nothing (make check)
+uv run ruff format --check .   # CI, writes nothing (make check also runs pyright)
+uv run pyright                 # type check (make typecheck)
 ```
 
 ### Migrations
@@ -291,7 +294,8 @@ Mirror an existing module; create only the unit directories the new module needs
 10. `router.py` — `router.include_router(<module>_controller.router, prefix="/<module>s", tags=[...])`
 11. Register the module router in `app/router.py`
 12. Optional `seeders/seed_NNN_<module>.py` (idempotent)
-13. `uv run ruff format . && uv run ruff check . --fix`, then run the app and hit the endpoints
+13. `uv run ruff format . && uv run ruff check . --fix && uv run pyright`, then run the app and
+    hit the endpoints
 
 Step 11 is the one that gets forgotten — without it the endpoints are simply absent. Entity
 registration is automatic, but only for files named `*_entity.py` inside an `entities/`

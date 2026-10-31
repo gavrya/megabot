@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install run lint format check migrate migration rollback seed up down logs
+.PHONY: help install run lint format typecheck check migrate migration rollback seed up down logs
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -17,9 +17,13 @@ format: ## Format the code and apply safe fixes
 	uv run ruff format .
 	uv run ruff check . --fix
 
-check: ## Lint + format check without writing files (CI)
+typecheck: ## Type-check the code with pyright
+	uv run pyright
+
+check: ## Lint + format + type check without writing files (CI)
 	uv run ruff check .
 	uv run ruff format --check .
+	uv run pyright
 
 migration: ## Autogenerate a migration from the entities: make migration m="add x"
 	uv run alembic revision --autogenerate -m "$(m)"
