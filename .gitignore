@@ -28,6 +28,7 @@ htmlcov/
 postgres-data/
 *.log
 todo.md
+TODO.md
 
 # Signal api
 signal-cli-data/

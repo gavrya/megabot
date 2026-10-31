@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := help
-.PHONY: help install run lint format typecheck check migrate migration rollback seed up down logs
+.PHONY: help install run lint format typecheck check test test-unit test-integration test-cov migrate migration rollback seed up down logs
 
 help: ## Show available commands
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install dependencies into .venv
 	uv sync
@@ -24,6 +24,18 @@ check: ## Lint + format + type check without writing files (CI)
 	uv run ruff check .
 	uv run ruff format --check .
 	uv run pyright
+
+test: ## Run all tests (integration tests need: docker compose up -d postgres)
+	uv run pytest
+
+test-unit: ## Run unit tests (tests/unit), nothing needs to be running
+	uv run pytest tests/unit
+
+test-integration: ## Run integration tests (tests/integration) against PostgreSQL
+	uv run pytest tests/integration
+
+test-cov: ## Run all tests with a coverage report
+	uv run pytest --cov --cov-report=term
 
 migration: ## Autogenerate a migration from the entities: make migration m="add x"
 	uv run alembic revision --autogenerate -m "$(m)"

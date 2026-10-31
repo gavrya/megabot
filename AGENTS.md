@@ -18,7 +18,7 @@ duplicate rules into them.
 | Lint + format   | Ruff (line length 100, target py312)          |
 | Type checking   | Pyright (`standard` mode, `[tool.pyright]`)   |
 | Container       | Docker, `python:3.14-slim-bookworm` runtime   |
-| Tests           | None — this project intentionally has no tests |
+| Tests           | pytest + pytest-asyncio, httpx, pytest-cov    |
 
 ## Directory structure
 
@@ -81,6 +81,16 @@ megabot/
 │   ├── versions/                             # Migration files, one per schema change
 │   ├── env.py                                # Async migration runner; loads Base.metadata
 │   └── script.py.mako                        # Template used for new migration files
+│
+├── tests/                                    # pytest suite (no __init__.py)
+│   ├── conftest.py                           # app + client fixtures; unit/integration markers
+│   ├── unit/                                 # No services needed; mirrors app/
+│   │   ├── modules/<module>/<unit>/          # test_<subject>_<unit>.py per app file
+│   │   └── shared/<unit>/
+│   └── integration/                          # Needs PostgreSQL; mirrors app/
+│       ├── conftest.py                       # db_engine, db_session, db_client fixtures
+│       ├── modules/<module>/
+│       └── shared/<unit>/
 │
 ├── seeders/                                  # Database seeding
 │   ├── runner.py                             # Discovers and runs seeders in filename order
@@ -180,9 +190,34 @@ controller -> service -> repository -> entity
   runs — module and shared entities alike. The `entities/` directory plus the `_entity.py`
   suffix is what makes a table visible to Alembic.
 - New dependency? `uv add <pkg>` (never edit `pyproject.toml` by hand) and commit `uv.lock`.
-- Run `uv run ruff format . && uv run ruff check . --fix && uv run pyright` before finishing a
-  change; pyright must report 0 errors.
-- Do **not** write unit tests; verify changes by running the app against the local stack.
+- Run `uv run ruff format . && uv run ruff check . --fix && uv run pyright && uv run pytest`
+  before finishing a change; pyright must report 0 errors and every test must pass.
+- Every change to `app/modules/` or `app/shared/` comes with tests in `tests/`, at the
+  mirrored path (see **Tests** below).
+
+### Tests
+
+- Two suites, by directory: `tests/unit/` and `tests/integration/`. Each mirrors `app/`:
+  `app/modules/articles/services/article_service.py` is unit-tested by
+  `tests/unit/modules/articles/services/test_article_service.py`. A test that touches the
+  database goes in `tests/integration/`, never in `tests/unit/`; if a file covers both, split
+  it into two files with the same name, one per suite.
+- No `__init__.py` here either; pytest runs with `--import-mode=importlib`, which allows the
+  same filename in both suites. Module-level files get the module name
+  (`test_article_router.py`, not `test_router.py`).
+- `tests/conftest.py` marks every test `unit` or `integration` from its directory; don't add
+  these markers by hand.
+- Plain functions, no test classes. `asyncio_mode = "auto"`, so async tests need no marker.
+- **Unit tests** (no database): services get `AsyncMock(spec=<Module>Repository)`;
+  controllers are hit through `client` with the service replaced by
+  `app.dependency_overrides[get_<module>_service] = lambda: mock`.
+- **Integration tests** use the `db_engine`, `db_session` or `db_client` fixtures from
+  `tests/integration/conftest.py` (unavailable to unit tests) and run against the
+  `megabot_test` database (created on demand, schema rebuilt via `Base.metadata.create_all`
+  each run, one rolled-back transaction per test). Needs `docker compose up -d postgres`;
+  skipped when unreachable.
+- Never import from `conftest.py`; share setup through fixtures. Per-file helpers stay
+  private (leading underscore) in the test file.
 
 ### Gotchas (verified, do not "fix" these)
 
@@ -202,6 +237,14 @@ controller -> service -> repository -> entity
 - `PGADMIN_EMAIL` must use a real TLD. pgAdmin rejects reserved domains such as `.local`
   and crash-loops on startup.
 - pgAdmin reaches the database at host `postgres`, not `localhost` (which is its own container).
+- `APP_DB_NAME=megabot_test` is forced by pytest-env in `[tool.pytest.ini_options]`, so it wins
+  over `.env` and the shell. This is what keeps a test run (which drops and recreates every
+  table) away from the development database — never weaken it to a default.
+- Pyright doesn't treat a positional default (`Field(None, min_length=1)`) as optional, so in
+  tests build such DTOs with `Model.model_validate({...})` rather than keyword arguments.
+- `APIRouter.routes` of a module router holds lazy included routers on current FastAPI, not
+  `APIRoute`s. To assert on a module's paths, mount it on a fresh `FastAPI()` and read
+  `app.openapi()["paths"]`.
 
 ## CLI commands
 
@@ -221,6 +264,15 @@ uv run uvicorn app.main:app --reload     # local API on :8000 (make run)
 docker compose up -d postgres pgadmin    # database + pgAdmin only
 docker compose up -d --build             # full stack in Docker (make up)
 docker compose down                      # stop (make down); add -v to wipe the DB volume
+```
+
+### Tests
+
+```bash
+uv run pytest                           # all tests (make test)
+uv run pytest tests/unit                # unit tests, nothing running (make test-unit)
+uv run pytest tests/integration         # needs postgres up (make test-integration)
+uv run pytest --cov --cov-report=term   # with coverage (make test-cov)
 ```
 
 ### Lint, format & type check
@@ -294,8 +346,11 @@ Mirror an existing module; create only the unit directories the new module needs
 10. `router.py` — `router.include_router(<module>_controller.router, prefix="/<module>s", tags=[...])`
 11. Register the module router in `app/router.py`
 12. Optional `seeders/seed_NNN_<module>.py` (idempotent)
-13. `uv run ruff format . && uv run ruff check . --fix && uv run pyright`, then run the app and
-    hit the endpoints
+13. Unit tests under `tests/unit/modules/<module>/`, mirroring the module's files: DTOs,
+    mapper, entity, service (mocked repository), controller (mocked service), dependencies,
+    router. Integration tests under `tests/integration/modules/<module>/`: repository and an
+    end-to-end `test_<module>s_api.py` using `db_client`
+14. `uv run ruff format . && uv run ruff check . --fix && uv run pyright && uv run pytest`
 
 Step 11 is the one that gets forgotten — without it the endpoints are simply absent. Entity
 registration is automatic, but only for files named `*_entity.py` inside an `entities/`

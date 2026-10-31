@@ -21,6 +21,7 @@ own FastAPI backend.
 - **signal-cli-rest-api** for the Signal connection
 - **Ruff** for linting and formatting
 - **Pyright** for static type checking
+- **pytest** (+ pytest-asyncio, pytest-cov, httpx) for tests
 - **Docker** / Docker Compose (app, postgres, pgadmin, signal-api)
 
 ## Requirements
@@ -230,6 +231,64 @@ Pyright is configured under `[tool.pyright]` in `pyproject.toml`. VS Code (Pylan
 Antigravity (basedpyright) read the same section, so the editor reports the same errors as
 the CLI.
 
+### Tests
+
+Tests are split into two directories, each mirroring the layout of `app/`
+(`tests/unit/modules/articles/services/` tests `app/modules/articles/services/`):
+
+```
+tests/
+├── conftest.py      # app and client fixtures, shared by both suites
+├── unit/            # nothing needs to be running
+└── integration/     # needs PostgreSQL
+    └── conftest.py  # db_engine, db_session and db_client fixtures
+```
+
+- **Unit tests** need nothing running. Services are tested with a mocked repository, and
+  controllers through the HTTP API with the service replaced via
+  `app.dependency_overrides`.
+- **Integration tests** (repositories, end-to-end API flows, the health check's database
+  probe) use a real PostgreSQL database. Start it first:
+
+  ```bash
+  docker compose up -d postgres
+  ```
+
+  The tests use a separate database, `megabot_test`, on the server configured by `APP_DB_*`.
+  It's created on the first run, and its schema is rebuilt from the entities on every run. Each
+  test runs in a transaction that is rolled back, so tests don't affect each other. If the
+  database is unreachable, these tests are skipped and listed in the summary.
+
+```bash
+uv run pytest                          # all tests (make test)
+uv run pytest tests/unit               # unit tests (make test-unit)
+uv run pytest tests/integration        # integration tests (make test-integration)
+uv run pytest --cov --cov-report=term  # all tests with coverage (make test-cov)
+uv run pytest tests/unit -k handler    # filter by test name
+```
+
+Each test is also marked `unit` or `integration` after its directory, so
+`uv run pytest -m unit` works too.
+
+`APP_DB_NAME=megabot_test` and a quieter log level are set in `[tool.pytest.ini_options]` in
+`pyproject.toml` (via pytest-env). They override `.env` and your shell, so a test run never
+touches the development database.
+
+Fixtures:
+
+| Fixture      | Gives you                                                         |
+| ------------ | ----------------------------------------------------------------- |
+| `app`        | The FastAPI app; `dependency_overrides` are reset after each test |
+| `client`     | `httpx.AsyncClient` bound to the app, no database                 |
+| `db_session` | `AsyncSession` inside a rolled-back transaction                   |
+| `db_client`  | `client` with the request session replaced by `db_session`        |
+
+Async tests need no decorator: `asyncio_mode = "auto"` is set.
+
+In VS Code, tests appear in the Testing panel (pytest is enabled in `.vscode/settings.json`),
+where they can be run, debugged or run with coverage. The `test`, `test (unit)` and
+`test (integration)` tasks run the same commands as the make targets.
+
 ### Make commands
 
 | Command                  | Description                                 |
@@ -241,6 +300,10 @@ the CLI.
 | `make format`            | Format the code and apply safe fixes        |
 | `make typecheck`         | Type-check the code with pyright            |
 | `make check`             | Lint, format and type check, writes nothing |
+| `make test`              | Run all tests                               |
+| `make test-unit`         | Run unit tests (`tests/unit`)               |
+| `make test-integration`  | Run integration tests (`tests/integration`) |
+| `make test-cov`          | Run all tests with a coverage report        |
 | `make migration m="msg"` | Autogenerate a migration                    |
 | `make migrate`           | Apply all pending migrations                |
 | `make rollback`          | Roll back the last migration                |
