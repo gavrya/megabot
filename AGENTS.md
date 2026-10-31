@@ -85,14 +85,17 @@ megabot/
 │   ├── runner.py                             # Discovers and runs seeders in filename order
 │   └── seed_<NNN>_<name>.py                  # One seeder; exposes async run(session)
 │
+├── docker/                                   # Per-service container files
+│   ├── app/
+│   │   ├── Dockerfile                        # Multi-stage build: uv builder -> slim runtime
+│   │   └── docker-entrypoint.sh              # Runs migrations/seeds on start, then the CMD
+│   └── pgadmin/servers.json                  # Preconfigured pgAdmin server
 ├── .vscode/                                  # VS Code settings, extensions, launch configs, tasks
 ├── .antigravity/                             # Antigravity settings, extensions, rules
 ├── AGENTS.md                                 # Master instructions for AI agents (source of truth)
 ├── CLAUDE.md                                 # Claude Code wrapper -> AGENTS.md
 ├── ANTIGRAVITY.md                            # Antigravity wrapper -> AGENTS.md
-├── Dockerfile                                # Multi-stage build: uv builder -> slim runtime
 ├── docker-compose.yml                        # app + postgres + adminer, driven by env vars
-├── docker-entrypoint.sh                      # Runs migrations/seeds on start, then the CMD
 ├── alembic.ini                               # Alembic config: script location, file naming
 ├── Makefile                                  # Shortcuts for every command in this file
 ├── pyproject.toml                            # Dependencies + Ruff configuration
