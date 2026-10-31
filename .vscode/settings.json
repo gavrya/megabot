@@ -20,6 +20,8 @@
     }
   },
   "ruff.importStrategy": "fromEnvironment",
+  "python.languageServer": "Pylance",
+  "python.analysis.diagnosticMode": "workspace",
   "[json]": { "editor.defaultFormatter": "vscode.json-language-features" },
   "[yaml]": { "editor.defaultFormatter": "redhat.vscode-yaml" },
   "files.associations": {
