@@ -56,6 +56,7 @@ Then install Python and the dependencies:
 ```bash
 uv python install 3.14   # version pinned in .python-version
 uv sync                  # creates .venv and installs all dependencies
+make hooks               # installs the git hooks, see "Git Hooks" below
 ```
 
 Common uv commands:
@@ -231,6 +232,52 @@ Pyright is configured under `[tool.pyright]` in `pyproject.toml`. VS Code (Pylan
 Antigravity (basedpyright) read the same section, so the editor reports the same errors as
 the CLI.
 
+### Git Hooks
+
+Git hooks are managed by [pre-commit](https://pre-commit.com) and configured in
+`.pre-commit-config.yaml`. Install them once per clone:
+
+```bash
+uv run pre-commit install   # make hooks; installs both the pre-commit and pre-push hooks
+```
+
+Every hook runs through `uv run`, so it uses the Ruff, Pyright and pytest versions pinned in
+`uv.lock`, the same ones as the CLI and the editor.
+
+**On commit**, only the staged Python files are checked:
+
+| Hook          | Command                 |
+| ------------- | ----------------------- |
+| `ruff-fix`    | `ruff check --fix`      |
+| `ruff-format` | `ruff format`           |
+
+Unstaged changes are stashed before the hooks run and restored afterwards, so only what you
+are committing is touched. If a hook changes a file, the commit is **aborted** and the fixes
+stay in your working tree. Review them, `git add` them and commit again. If a lint error
+can't be fixed automatically, fix it by hand.
+
+**On push**, the whole project is checked and nothing is written. Any failure blocks the push:
+
+| Hook                | Command                        |
+| ------------------- | ------------------------------ |
+| `ruff-check`        | `ruff check .`                 |
+| `ruff-format-check` | `ruff format --check .`        |
+| `pyright`           | `pyright`                      |
+| `pytest-unit`       | `pytest tests/unit`            |
+
+Integration tests are not part of the hook because they need PostgreSQL. Run them yourself
+with `make test-integration`.
+
+Run the hooks by hand, or skip them:
+
+```bash
+uv run pre-commit run                          # pre-commit hooks on the staged files
+uv run pre-commit run --all-files              # pre-commit hooks on every file
+uv run pre-commit run --hook-stage pre-push    # the pre-push checks
+git commit --no-verify                         # skip the hooks for one commit (or git push --no-verify)
+uv run pre-commit uninstall -t pre-commit -t pre-push   # remove the hooks
+```
+
 ### Tests
 
 Tests are split into two directories, each mirroring the layout of `app/`
@@ -295,6 +342,7 @@ where they can be run, debugged or run with coverage. The `test`, `test (unit)` 
 | ------------------------ | ------------------------------------------- |
 | `make help`              | List all commands                           |
 | `make install`           | Install dependencies (`uv sync`)            |
+| `make hooks`             | Install the git hooks                       |
 | `make run`               | Run the API with autoreload                 |
 | `make lint`              | Lint the code                               |
 | `make format`            | Format the code and apply safe fixes        |

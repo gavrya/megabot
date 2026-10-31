@@ -20,6 +20,7 @@ seed = "seeders.runner:main"
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "pre-commit>=4.7.0",
     "pyright>=1.1.414",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1",

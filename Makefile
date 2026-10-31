@@ -1,11 +1,14 @@
 .DEFAULT_GOAL := help
-.PHONY: help install run lint format typecheck check test test-unit test-integration test-cov migrate migration rollback seed up down logs
+.PHONY: help install hooks run lint format typecheck check test test-unit test-integration test-cov migrate migration rollback seed up down logs
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install dependencies into .venv
 	uv sync
+
+hooks: ## Install the git hooks (pre-commit and pre-push)
+	uv run pre-commit install
 
 run: ## Run the API with autoreload
 	uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000

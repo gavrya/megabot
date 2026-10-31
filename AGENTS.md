@@ -109,6 +109,7 @@ megabot/
 ├── docker-compose.yml                        # app + postgres + adminer, driven by env vars
 ├── alembic.ini                               # Alembic config: script location, file naming
 ├── Makefile                                  # Shortcuts for every command in this file
+├── .pre-commit-config.yaml                   # Git hooks: fix on commit, full checks on push
 ├── pyproject.toml                            # Dependencies + Ruff/Pyright config
 ├── .env.example                              # Documented template for .env
 └── .python-version                           # Python version pinned for uv
@@ -255,6 +256,7 @@ All commands run from the repository root. Every `make` target maps to the `uv` 
 ```bash
 cp .env.example .env    # first run only
 uv sync                 # create .venv, install deps (make install)
+uv run pre-commit install  # git hooks: ruff fix on commit; lint, format, pyright, unit tests on push (make hooks)
 ```
 
 ### Run
